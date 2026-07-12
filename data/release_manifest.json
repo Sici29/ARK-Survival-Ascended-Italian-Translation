@@ -1,0 +1,15 @@
+{
+  "translation_version": "1.0.0",
+  "supported_builds": [
+    "24159380"
+  ],
+  "payload_file": "ARK_Italian_Review_24159380_P.pak",
+  "payload_sha256": "D3194B7B012B4A5E0CF2E262988E126F483E2981B14D430868E9BFFEE2174BB4",
+  "installed_file": "ARK_Italian_Review_P.pak",
+  "installer_asset": "ARK-Survival-Ascended-Traduzione-Italiana.exe",
+  "github_project_url": "https://github.com/Sici29/ARK-Survival-Ascended-Italian-Translation",
+  "github_issues_url": "https://github.com/Sici29/ARK-Survival-Ascended-Italian-Translation/issues",
+  "github_releases_url": "https://github.com/Sici29/ARK-Survival-Ascended-Italian-Translation/releases/latest",
+  "github_api_latest": "https://api.github.com/repos/Sici29/ARK-Survival-Ascended-Italian-Translation/releases/latest",
+  "support_url": "https://buymeacoffee.com/sici29"
+}

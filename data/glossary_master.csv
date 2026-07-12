@@ -1,0 +1,63 @@
+en,it,mode,note
+ARK,ARK,preserve,Marchio e nome dell'universo
+TEK,TEK,preserve,Tecnologia e variante ufficiale
+Engram,Engramma,translate,Meccanica di apprendimento
+Engrams,Engrammi,translate,Meccanica di apprendimento
+Inventory,Inventario,translate,Interfaccia
+Tribe,Tribù,translate,Meccanica sociale
+Taming,Addomesticamento,translate,Meccanica creature
+Tame,Addomestica,context,Verbo; adattare alla frase
+Level,Livello,translate,Statistica
+Health,Salute,translate,Statistica
+Stamina,Vigore,translate,Statistica
+Oxygen,Ossigeno,translate,Statistica
+Food,Cibo,translate,Statistica
+Water,Acqua,translate,Statistica
+Weight,Peso,translate,Statistica
+Melee Damage,Danno corpo a corpo,translate,Statistica
+Movement Speed,Velocità di movimento,translate,Statistica
+Crafting Skill,Abilità di fabbricazione,translate,Statistica
+Blueprint,Progetto,translate,Oggetto e ricetta
+Blueprints,Progetti,translate,Oggetto e ricetta
+Survivor,Superstite,context,Forma neutra preferita quando possibile
+Genesis,Genesis,preserve,Nome del DLC
+Aberration,Aberration,context,Preservare per mappa e DLC; tradurre nell'uso comune come aberrazione
+Extinction,Extinction,context,Preservare per mappa e DLC; tradurre nell'uso comune come estinzione
+Ragnarok,Ragnarok,preserve,Nome della mappa
+Valguero,Valguero,preserve,Nome della mappa
+Fjordur,Fjordur,preserve,Nome della mappa
+The Island,The Island,preserve,Nome della mappa
+the Island,The Island,strict,Nome della mappa usato all'interno di una frase
+Scorched Earth,Scorched Earth,preserve,Nome della mappa e del DLC
+The Center,The Center,preserve,Nome della mappa
+Crystal Isles,Crystal Isles,preserve,Nome della mappa
+Lost Island,Lost Island,preserve,Nome della mappa
+Astraeos,Astraeos,preserve,Nome della mappa
+Primitive,Primitive,context,Preservare quando è l'etichetta del livello di qualità; tradurre l'aggettivo comune
+Ramshackle,Ramshackle,context,Preservare quando è l'etichetta del livello di qualità
+Apprentice,Apprentice,context,Preservare quando è l'etichetta del livello di qualità
+Journeyman,Journeyman,context,Preservare quando è l'etichetta del livello di qualità
+Mastercraft,Mastercraft,context,Preservare quando è l'etichetta del livello di qualità
+Ascendant,Ascendant,context,Preservare quando è l'etichetta del livello di qualità
+Cryopod,Cryopod,preserve,Nome dell'oggetto
+Flak,Flak,preserve,Nome del set di armatura
+Tintoberry,Tintoberry,preserve,Nome ARK della bacca
+Amarberry,Amarberry,preserve,Nome ARK della bacca
+Azulberry,Azulberry,preserve,Nome ARK della bacca
+Mejoberry,Mejoberry,preserve,Nome ARK della bacca
+Narcoberry,Narcoberry,preserve,Nome ARK della bacca
+Stimberry,Stimberry,preserve,Nome ARK della bacca
+Sparkpowder,Polvere scintillante,strict,Risorsa di base; usare sempre questa resa
+Tidbit Glitch Discovery,Scoperta del glitch informativo,strict,Voce obiettivo Genesis
+Tinkering Window,finestra di modifica,strict,Interfaccia di combinazione dei progetti
+Shield Generator Rig,Modulo generatore di scudi,strict,Modulo equipaggiamento
+Sapped!,Invischiato!,strict,Effetto della resina
+Hyperdrive,Hyperdrive,preserve,Nome della funzione
+ChargeLight,ChargeLight,preserve,Identificatore ARK
+RallyPoint,RallyPoint,preserve,Identificatore ARK
+Floaty Swim Bottom,Slip da bagno galleggiante,strict,Nome del costume
+Makeshift Megalab,Megalaboratorio improvvisato,strict,Nome della struttura
+Frigid Armor,Armatura gelida,strict,Nome dell'effetto o ricompensa
+Moderate Medical,Medicina moderata,strict,Nome della categoria
+Natrix The Devious,Natrix l'Infida,strict,Nome proprio con epiteto traducibile
+Lost,Lost,context,Preservare quando indica la fazione; tradurre quando è un aggettivo o participio comune
