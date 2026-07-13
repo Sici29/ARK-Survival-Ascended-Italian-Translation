@@ -1,6 +1,6 @@
 # ARK: Survival Ascended — Traduzione italiana
 
-Revisione italiana amatoriale completa per **ARK: Survival Ascended**, con installazione automatica, controllo della build, backup e ripristino.
+Revisione italiana amatoriale del catalogo di localizzazione di **ARK: Survival Ascended**, con installazione automatica, controllo della build, backup e ripristino.
 
 ## ☕ Sostieni il progetto
 
@@ -36,6 +36,7 @@ L'installer:
 - controlla tutte le librerie Steam, comprese quelle su dischi diversi;
 - verifica la presenza reale di `ArkAscended.exe` e del PAK principale;
 - mostra percorso, build rilevata e stato della traduzione;
+- impedisce l'avvio simultaneo di più copie dell'installer;
 - crea un backup prima di modificare qualsiasi file;
 - copia la patch in modo atomico e ne verifica l'hash SHA-256;
 - permette di ripristinare la situazione precedente dal menu.
@@ -77,18 +78,22 @@ Documenti\ARKItalianTranslation\backups
 ## Stato della traduzione
 
 - Copertura: **38.751 / 38.751 stringhe**.
-- Stringhe approvate editorialmente: **29.392**.
-- Risorse tecniche preservate intenzionalmente: **9.359**.
+- Stringhe approvate editorialmente: **29.529**.
+- Risorse tecniche preservate intenzionalmente: **9.222**.
 - Build verificata: **24159380**.
-- Versione della traduzione: **1.0.0**.
+- Versione della traduzione: **1.1.0**.
 - Revisione: interfaccia, descrizioni, sistemi di gioco, tutorial, note e testi narrativi.
 - Controlli finali: zero errori strutturali, zero avvisi e zero stringhe sospese.
 
 ## Aggiornamenti
 
-L'installer controlla GitHub Releases all'avvio. Se trova una versione più recente può scaricare il nuovo EXE, controllarne dimensione e SHA-256 pubblicati da GitHub, sostituire la versione precedente e riaprirsi automaticamente.
+L'installer controlla GitHub Releases all'avvio. Se trova una versione più recente può scaricare il nuovo EXE, verificarne dimensione e SHA-256 pubblicati da GitHub, sostituire la versione precedente in sicurezza e riaprirsi automaticamente. Un aggiornamento privo del digest ufficiale non viene installato.
 
 Se ARK riceve una build non ancora verificata, l'installer non procede silenziosamente: mostra la nuova build e richiede un installer aggiornato. L'uso avanzato di `--force` resta disponibile da riga di comando.
+
+## Limiti della copertura
+
+Il dato **38.751 / 38.751** indica la copertura completa del catalogo di localizzazione estratto dalla build verificata. Messaggi diagnostici generati dal server o dal motore, testi costruiti dinamicamente e contenuti aggiunti da mod possono trovarsi fuori dal catalogo e quindi restare in inglese. Un esempio è il messaggio tecnico `Server hitch detected`, che non proviene dal file di localizzazione sostituito dalla patch.
 
 ## Crediti e collegamenti
 

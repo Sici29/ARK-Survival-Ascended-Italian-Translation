@@ -35,6 +35,7 @@ USER_WORK_DIR = Path(os.environ.get("ARK_IT_WORK_DIR", Path.home() / "Documents"
 UPDATE_APPLY_COMMAND = "_apply-update"
 UPDATE_COMPLETE_COMMAND = "_update-complete"
 UPDATE_SCHEDULED = 20
+_INSTANCE_LOCK_HANDLE = None
 
 if getattr(sys, "frozen", False):
     APP_DIR = Path(sys.executable).resolve().parent
@@ -363,6 +364,21 @@ def installation_status(location: GameLocation, manifest: dict | None = None) ->
     }
 
 
+def recorded_translation_version(location: GameLocation) -> str | None:
+    state_path = USER_WORK_DIR / "installed_state.json"
+    if not state_path.is_file():
+        return None
+    try:
+        state = read_json(state_path)
+        recorded_game = Path(str(state.get("game_dir") or "")).resolve()
+        if recorded_game != location.game_dir.resolve():
+            return None
+        version = str(state.get("translation_version") or "").strip()
+        return version or None
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+
+
 def supported_build(location: GameLocation, manifest: dict | None = None) -> bool:
     manifest = manifest or release_manifest()
     supported = {str(item) for item in manifest.get("supported_builds", [])}
@@ -490,9 +506,20 @@ def restore_translation(location: GameLocation) -> Path:
     return backup
 
 
+def normalize_version(version: str) -> tuple[int, ...]:
+    """Compare semantic versions while ranking a stable build above its prerelease."""
+    raw = version.strip().lower().lstrip("v")
+    core, separator, suffix = raw.partition("-")
+    values = [int(part) for part in re.findall(r"\d+", core)]
+    values = (values + [0, 0, 0])[:3]
+    stable_rank = 1 if not separator else 0
+    suffix_values = [int(part) for part in re.findall(r"\d+", suffix)]
+    return tuple(values + [stable_rank] + suffix_values)
+
+
 def version_tuple(raw: str) -> tuple[int, ...]:
-    values = re.findall(r"\d+", raw)
-    return tuple(int(value) for value in values[:4]) or (0,)
+    """Backward-compatible alias used by older tests and integrations."""
+    return normalize_version(raw)
 
 
 def check_for_updates(silent: bool = False) -> dict:
@@ -508,8 +535,9 @@ def check_for_updates(silent: bool = False) -> dict:
         result.update(
             {
                 "latest": latest,
-                "update_available": version_tuple(latest) > version_tuple(current),
+                "update_available": normalize_version(latest) > normalize_version(current),
                 "release": release,
+                "asset": find_release_asset(release),
                 "releases_url": str(manifest["github_releases_url"]),
             }
         )
@@ -530,8 +558,12 @@ def find_release_asset(release: dict) -> dict | None:
 
 def download_update(asset: dict, destination: Path) -> None:
     url = str(asset.get("browser_download_url") or "")
+    expected_digest = str(asset.get("digest") or "")
     if not url.startswith("https://github.com/"):
         raise RuntimeError("URL di aggiornamento non valido.")
+    if not expected_digest.lower().startswith("sha256:"):
+        raise RuntimeError("GitHub non ha fornito l'hash SHA-256: aggiornamento automatico annullato.")
+    expected_hash = expected_digest.split(":", 1)[1].lower()
     request = urllib.request.Request(url, headers={"User-Agent": "ARK-Italian-Translation-Installer"})
     destination.parent.mkdir(parents=True, exist_ok=True)
     partial = destination.with_suffix(destination.suffix + ".download")
@@ -547,10 +579,9 @@ def download_update(asset: dict, destination: Path) -> None:
                 digest.update(chunk)
                 size += len(chunk)
         expected_size = int(asset.get("size") or 0)
-        expected_digest = str(asset.get("digest") or "")
         if expected_size and size != expected_size:
             raise RuntimeError("Dimensione dell'aggiornamento non valida.")
-        if expected_digest.startswith("sha256:") and digest.hexdigest().lower() != expected_digest[7:].lower():
+        if digest.hexdigest().lower() != expected_hash:
             raise RuntimeError("Hash SHA-256 dell'aggiornamento non valido.")
         os.replace(partial, destination)
     finally:
@@ -558,18 +589,134 @@ def download_update(asset: dict, destination: Path) -> None:
             partial.unlink()
 
 
+def acquire_installer_instance_lock() -> bool:
+    """Impedisce che due finestre interattive blocchino l'auto-aggiornamento."""
+    global _INSTANCE_LOCK_HANDLE
+    if _INSTANCE_LOCK_HANDLE is not None or os.name != "nt":
+        return True
+    import msvcrt
+
+    try:
+        USER_WORK_DIR.mkdir(parents=True, exist_ok=True)
+        handle = (USER_WORK_DIR / "installer.lock").open("a+b")
+    except OSError:
+        return True
+    handle.seek(0, os.SEEK_END)
+    if handle.tell() == 0:
+        handle.write(b"0")
+        handle.flush()
+    handle.seek(0)
+    try:
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+    except OSError:
+        handle.close()
+        return False
+    _INSTANCE_LOCK_HANDLE = handle
+    return True
+
+
+def prompt_close_other_installers() -> bool:
+    if os.name != "nt":
+        return False
+    try:
+        message = (
+            "Un'altra finestra di ARK - Traduzione Italiana sta usando il vecchio EXE.\n\n"
+            "Chiudi tutte le altre finestre dell'installer, poi premi Riprova."
+        )
+        flags = 0x00000005 | 0x00000030 | 0x00040000
+        return ctypes.windll.user32.MessageBoxW(None, message, "Aggiornamento installer", flags) == 4
+    except Exception:
+        return False
+
+
+def show_update_failure_message() -> None:
+    if os.name != "nt":
+        return
+    try:
+        message = (
+            "Aggiornamento non completato.\n\n"
+            "Chiudi tutte le finestre dell'installer e riprova. Il vecchio EXE non è stato modificato."
+        )
+        ctypes.windll.user32.MessageBoxW(
+            None, message, "ARK - Traduzione Italiana", 0x00000010 | 0x00040000
+        )
+    except Exception:
+        pass
+
+
+def cleanup_update_cache() -> int:
+    updates = USER_WORK_DIR / "updates"
+    if not updates.is_dir():
+        return 0
+    removed = 0
+    current = Path(sys.executable).resolve()
+    expected = str(release_manifest().get("installer_asset") or "")
+    for file in updates.rglob("*"):
+        if not file.is_file() or not (
+            file.name == expected
+            or file.name.startswith("ARK-Italian-Translation-")
+            or file.name.endswith(".exe.download")
+        ):
+            continue
+        try:
+            if file.resolve() != current:
+                file.unlink()
+                removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def apply_update_payload(
+    source: Path,
+    target: Path,
+    retries: int = 120,
+    delay: float = 0.5,
+    launch: bool = True,
+    launch_args: list[str] | None = None,
+) -> bool:
+    """Sostituisce il vecchio EXE solo dopo averne ottenuto l'accesso esclusivo."""
+    source = source.resolve()
+    target = target.resolve()
+    if source == target or target.suffix.lower() != ".exe":
+        raise ValueError("Percorso di aggiornamento non valido.")
+    staging = target.with_name(target.name + ".new")
+    last_error: Exception | None = None
+    for _ in range(retries):
+        try:
+            shutil.copy2(source, staging)
+            os.replace(staging, target)
+            if launch:
+                launch_kwargs: dict[str, object] = {"cwd": str(target.parent)}
+                if os.name == "nt":
+                    launch_kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+                subprocess.Popen([str(target), *(launch_args or [])], **launch_kwargs)
+            return True
+        except (PermissionError, OSError) as exc:
+            last_error = exc
+            time.sleep(delay)
+        finally:
+            if staging.exists():
+                try:
+                    staging.unlink()
+                except OSError:
+                    pass
+    raise RuntimeError(f"Impossibile sostituire il vecchio installer: {last_error}")
+
+
 def schedule_update(status: dict) -> bool:
     if not getattr(sys, "frozen", False):
         print("L'aggiornamento automatico è disponibile soltanto nell'EXE compilato.")
         return False
-    asset = find_release_asset(status.get("release") or {})
+    asset = status.get("asset") or find_release_asset(status.get("release") or {})
     if not asset:
         print("La release non contiene l'installer previsto.")
         return False
     cache = USER_WORK_DIR / "updates" / str(status["latest"])
     downloaded = cache / f"ARK-Italian-Translation-{os.getpid()}-{int(time.time() * 1000)}.exe"
     download_update(asset, downloaded)
-    flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0) if os.name == "nt" else 0
+    print("Download verificato tramite SHA-256.")
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
     subprocess.Popen(
         [str(downloaded), UPDATE_APPLY_COMMAND, str(Path(sys.executable).resolve()), str(status["current"])],
         cwd=str(downloaded.parent),
@@ -579,18 +726,23 @@ def schedule_update(status: dict) -> bool:
 
 
 def apply_update(source: Path, target: Path, previous_version: str) -> int:
-    for _ in range(40):
+    log_path = USER_WORK_DIR / "update_error.txt"
+    completion_args = [UPDATE_COMPLETE_COMMAND, previous_version]
+    try:
         try:
-            temporary = target.with_suffix(target.suffix + ".new")
-            shutil.copy2(source, temporary)
-            os.replace(temporary, target)
-            flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0) if os.name == "nt" else 0
-            subprocess.Popen([str(target), UPDATE_COMPLETE_COMMAND, previous_version], cwd=str(target.parent), creationflags=flags)
-            return 0
-        except PermissionError:
-            time.sleep(0.25)
-    print("Aggiornamento non riuscito: chiudi le altre finestre dell'installer e riprova.")
-    return 1
+            apply_update_payload(source, target, retries=20, delay=0.25, launch_args=completion_args)
+        except RuntimeError:
+            if not prompt_close_other_installers():
+                raise
+            apply_update_payload(source, target, launch_args=completion_args)
+        if log_path.exists():
+            log_path.unlink()
+        return 0
+    except Exception as exc:
+        USER_WORK_DIR.mkdir(parents=True, exist_ok=True)
+        log_path.write_text(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {exc}\n", encoding="utf-8")
+        show_update_failure_message()
+        return 1
 
 
 def enable_console_colors() -> bool:
@@ -618,52 +770,127 @@ def startup_status() -> dict:
         "manifest": manifest,
         "location": None,
         "installed": None,
+        "installed_version": None,
         "update": check_for_updates(silent=True),
     }
     try:
         location = resolve_game_location()
         result["location"] = location
         result["installed"] = installation_status(location, manifest)
+        result["installed_version"] = recorded_translation_version(location)
     except (FileNotFoundError, OSError):
         pass
     return result
 
 
-def print_status(status: dict, colors: bool) -> None:
+def status_overview(status: dict, colors: bool) -> dict[str, str]:
     manifest = status["manifest"]
     location = status.get("location")
     installed = status.get("installed")
+    installed_version = status.get("installed_version")
     update = status["update"]
-    supported = ", ".join(str(item) for item in manifest.get("supported_builds", []))
+    current = f"v{str(manifest.get('translation_version') or '0.0.0').lstrip('v')}"
+    latest = str(update.get("latest") or current)
+
+    if location:
+        source_note = "trovato automaticamente" if location.source != "manuale" else "percorso scelto"
+        if supported_build(location, manifest):
+            game_label = colored(
+                f"✓ build {location.build_id or 'rilevata'} compatibile ({source_note})",
+                ConsoleColor.GREEN,
+                colors,
+            )
+        else:
+            game_label = colored(
+                f"⚠ build {location.build_id or 'sconosciuta'} da verificare ({source_note})",
+                ConsoleColor.YELLOW,
+                colors,
+            )
+    else:
+        game_label = colored("✗ non trovato", ConsoleColor.RED, colors)
+
+    if update.get("error"):
+        installer_label = colored(f"{current} (controllo online non disponibile)", ConsoleColor.YELLOW, colors)
+    elif update.get("update_available"):
+        installer_label = colored(f"{current} → {latest} disponibile", ConsoleColor.GREEN, colors)
+    else:
+        installer_label = colored(f"{current} aggiornato", ConsoleColor.GREEN, colors)
+
+    if installed and installed.get("current"):
+        translation_label = colored(f"✓ {current} installata", ConsoleColor.GREEN, colors)
+    elif installed and installed.get("installed"):
+        recorded = f"v{str(installed_version).lstrip('v')}" if installed_version else "versione non registrata"
+        translation_label = colored(f"⚠ {recorded} installata → {current} disponibile", ConsoleColor.YELLOW, colors)
+    elif installed is not None:
+        translation_label = colored(f"non installata → {current} disponibile", ConsoleColor.YELLOW, colors)
+    else:
+        translation_label = colored("? stato non verificabile", ConsoleColor.YELLOW, colors)
+
+    if not location:
+        headline = colored("✗ GIOCO NON TROVATO", ConsoleColor.BOLD + ConsoleColor.RED, colors)
+        message = "Indica la cartella di ARK: Survival Ascended per continuare."
+        action = "Scegli 4 per selezionare la cartella del gioco."
+    elif not supported_build(location, manifest):
+        headline = colored("⚠ ARK È STATO AGGIORNATO — BUILD DA VERIFICARE", ConsoleColor.BOLD + ConsoleColor.YELLOW, colors)
+        message = f"La build {location.build_id or 'rilevata'} non è ancora certificata per questa traduzione."
+        action = "Aggiorna l'installer oppure attendi una release compatibile; non forzare l'installazione."
+    elif update.get("update_available"):
+        headline = colored("↑ NUOVO INSTALLER DISPONIBILE", ConsoleColor.BOLD + ConsoleColor.GREEN, colors)
+        message = f"È disponibile {latest}."
+        action = "Accetta l'aggiornamento automatico consigliato."
+    elif installed and installed.get("current"):
+        headline = colored("✓ TUTTO AGGIORNATO", ConsoleColor.BOLD + ConsoleColor.GREEN, colors)
+        message = "La traduzione installata coincide con quella dell'installer."
+        action = "Non devi fare nulla."
+    elif installed and installed.get("installed"):
+        headline = colored("↑ TRADUZIONE DA AGGIORNARE", ConsoleColor.BOLD + ConsoleColor.YELLOW, colors)
+        message = f"L'installer contiene la traduzione {current}."
+        action = "Premi Invio per aggiornarla."
+    else:
+        headline = colored("✓ PRONTA PER L'INSTALLAZIONE", ConsoleColor.BOLD + ConsoleColor.GREEN, colors)
+        message = f"La traduzione {current} è compatibile con questa build di ARK."
+        action = "Premi Invio per installarla."
+
+    return {
+        "headline": headline,
+        "message": message,
+        "game": game_label,
+        "translation": translation_label,
+        "installer": installer_label,
+        "action": action,
+    }
+
+
+def print_status(status: dict, colors: bool) -> None:
+    overview = status_overview(status, colors)
     print(colored("ARK: Survival Ascended - Traduzione Italiana", ConsoleColor.BOLD + ConsoleColor.CYAN, colors))
     print("=" * 68)
-    if location:
-        print("Percorso del gioco          :", colored(f"✓ {location.source}", ConsoleColor.GREEN, colors))
-        print("Cartella                    :", location.game_dir)
-        build_label = str(location.build_id or "non rilevata")
-        build_color = ConsoleColor.GREEN if supported_build(location, manifest) else ConsoleColor.YELLOW
-        print("Build del gioco rilevata    :", colored(build_label, build_color, colors))
-    else:
-        print("Percorso del gioco          :", colored("✗ NON TROVATO", ConsoleColor.RED, colors))
-        print("Build del gioco rilevata    : non disponibile")
-    print("Build verificata            :", supported or "non specificata")
-    if installed and installed["current"]:
-        install_label = colored("✓ INSTALLATA E AGGIORNATA", ConsoleColor.GREEN, colors)
-    elif installed and installed["installed"]:
-        install_label = colored("⚠ PRESENTE, VERSIONE DIVERSA", ConsoleColor.YELLOW, colors)
-    else:
-        install_label = colored("✗ NON INSTALLATA", ConsoleColor.YELLOW, colors)
-    print("Traduzione italiana         :", install_label)
-    print("Versione installer          :", manifest["translation_version"])
-    if update.get("error"):
-        latest = colored("controllo non disponibile", ConsoleColor.YELLOW, colors)
-    elif update.get("update_available"):
-        latest = colored(f"{update['latest']}  ← NUOVA", ConsoleColor.GREEN, colors)
-    else:
-        latest = colored("nessuna  ✓ AGGIORNATO", ConsoleColor.GREEN, colors)
-    print("Nuova versione disponibile  :", latest)
+    print(overview["headline"])
+    print(overview["message"])
+    print()
+    print(f"Gioco       : {overview['game']}")
+    print(f"Traduzione  : {overview['translation']}")
+    print(f"Installer   : {overview['installer']}")
+    print()
+    print(colored("COSA FARE", ConsoleColor.BOLD, colors))
+    print(overview["action"])
     print("=" * 68)
-    print("GitHub:", manifest["github_project_url"])
+    print("GitHub:", status["manifest"]["github_project_url"])
+
+
+def print_technical_status(status: dict, colors: bool) -> None:
+    manifest = status["manifest"]
+    location = status.get("location")
+    installed = status.get("installed") or {}
+    print(colored("Dettagli tecnici", ConsoleColor.BOLD + ConsoleColor.CYAN, colors))
+    print("=" * 68)
+    print("Cartella gioco     :", location.game_dir if location else "non rilevata")
+    print("Metodo rilevamento :", location.source if location else "non disponibile")
+    print("Build rilevata     :", location.build_id if location else "non rilevata")
+    print("Build supportate   :", ", ".join(str(item) for item in manifest.get("supported_builds", [])) or "nessuna")
+    print("Versione registrata:", status.get("installed_version") or "non registrata")
+    print("Hash PAK installato:", installed.get("hash") or "non presente")
+    print("=" * 68)
 
 
 def show_credits() -> int:
@@ -678,11 +905,30 @@ def show_credits() -> int:
     return 0
 
 
-def install_from_menu(force: bool = False) -> int:
+def ensure_current_installer(ignore_update: bool = False, no_update_check: bool = False) -> None:
+    if ignore_update or no_update_check:
+        return
+    update = check_for_updates(silent=True)
+    if update.get("update_available"):
+        raise RuntimeError(
+            f"È disponibile l'installer {update['latest']}. Aggiornalo prima di installare la traduzione."
+        )
+
+
+def install_from_menu(force: bool = False, ignore_update: bool = False) -> int:
+    try:
+        ensure_current_installer(ignore_update=ignore_update)
+    except RuntimeError as exc:
+        print("Installazione non avviata:", exc)
+        return 1
     try:
         location = resolve_game_location()
     except FileNotFoundError:
-        location = configure_game_dir()
+        try:
+            location = configure_game_dir()
+        except (OSError, RuntimeError) as exc:
+            print("Installazione non riuscita:", exc)
+            return 1
         if not location:
             return 1
     try:
@@ -733,6 +979,7 @@ def run_menu() -> int:
     print("3. Controlla gli aggiornamenti")
     print("4. Indica o modifica la cartella di ARK")
     print("5. Crediti, GitHub e sostieni il progetto")
+    print("6. Mostra i dettagli tecnici")
     print("0. Esci")
     choice = input("Scelta [Invio = installa]: ").strip() or "1"
     if choice == "0":
@@ -752,6 +999,10 @@ def run_menu() -> int:
         return 0 if configure_game_dir() else 1
     if choice == "5":
         return show_credits()
+    if choice == "6":
+        print()
+        print_technical_status(status, colors)
+        return 0
     print("Scelta non valida.")
     return 1
 
@@ -764,6 +1015,10 @@ def build_parser() -> argparse.ArgumentParser:
         sub.add_argument("--game-dir")
         if name == "install":
             sub.add_argument("--force", action="store_true")
+            sub.add_argument("--no-update-check", action="store_true")
+            sub.add_argument("--ignore-update", action="store_true")
+    update = subparsers.add_parser("update")
+    update.set_defaults(command="update")
     apply_parser = subparsers.add_parser(UPDATE_APPLY_COMMAND)
     apply_parser.add_argument("target_exe")
     apply_parser.add_argument("previous_version")
@@ -777,8 +1032,14 @@ def main() -> int:
     if args.command == UPDATE_APPLY_COMMAND:
         return apply_update(Path(sys.executable).resolve(), Path(args.target_exe).resolve(), args.previous_version)
     if args.command == UPDATE_COMPLETE_COMMAND:
-        print(f"Aggiornamento completato: v{args.previous_version} → v{release_manifest()['translation_version']}")
-        input("Premi Invio per continuare...")
+        if not acquire_installer_instance_lock():
+            print("Aggiornamento completato, ma un'altra finestra dell'installer è ancora aperta.")
+            return 4
+        cleanup_update_cache()
+        print(colored("✓ AGGIORNAMENTO COMPLETATO", ConsoleColor.BOLD + ConsoleColor.GREEN, enable_console_colors()))
+        print(f"Versione precedente : v{args.previous_version.lstrip('v')}")
+        print(f"Versione attuale    : v{str(release_manifest()['translation_version']).lstrip('v')}")
+        print("L'installer è stato riavviato automaticamente.\n")
         return run_menu()
     if args.command == "check":
         location = resolve_game_location(args.game_dir)
@@ -786,6 +1047,7 @@ def main() -> int:
         print(installation_status(location))
         return 0
     if args.command == "install":
+        ensure_current_installer(ignore_update=args.ignore_update, no_update_check=args.no_update_check)
         location = resolve_game_location(args.game_dir)
         backup = install_translation(location, force=args.force)
         save_game_dir(location.game_dir)
@@ -795,6 +1057,16 @@ def main() -> int:
         location = resolve_game_location(args.game_dir)
         print("Ripristinato backup:", restore_translation(location))
         return 0
+    if args.command == "update":
+        update = check_for_updates()
+        if update.get("update_available"):
+            return UPDATE_SCHEDULED if schedule_update(update) else 1
+        return 0
+    if not acquire_installer_instance_lock():
+        print("L'installer è già aperto in un'altra finestra.")
+        print("Chiudi l'altra finestra prima di riaprirlo.")
+        return 4
+    cleanup_update_cache()
     return run_menu()
 
 
@@ -804,7 +1076,8 @@ if __name__ == "__main__":
     except Exception as exc:
         print("Errore:", exc)
         code = 1
-    if getattr(sys, "frozen", False) and code != UPDATE_SCHEDULED:
+    internal_apply = len(sys.argv) > 1 and sys.argv[1] == UPDATE_APPLY_COMMAND
+    if getattr(sys, "frozen", False) and code != UPDATE_SCHEDULED and not internal_apply:
         try:
             input("\nPremi Invio per chiudere...")
         except EOFError:

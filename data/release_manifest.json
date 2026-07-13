@@ -1,10 +1,10 @@
 {
-  "translation_version": "1.0.0",
+  "translation_version": "1.1.0",
   "supported_builds": [
     "24159380"
   ],
   "payload_file": "ARK_Italian_Review_24159380_P.pak",
-  "payload_sha256": "D3194B7B012B4A5E0CF2E262988E126F483E2981B14D430868E9BFFEE2174BB4",
+  "payload_sha256": "1DA2C1BE3A707C04091DDD7995746D48D48A492624EB14EC60974625289D7417",
   "installed_file": "ARK_Italian_Review_P.pak",
   "installer_asset": "ARK-Survival-Ascended-Traduzione-Italiana.exe",
   "github_project_url": "https://github.com/Sici29/ARK-Survival-Ascended-Italian-Translation",

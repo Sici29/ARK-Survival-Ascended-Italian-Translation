@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import sys
 import tempfile
@@ -154,6 +155,119 @@ class InstallRestoreTests(unittest.TestCase):
 class VersionTests(unittest.TestCase):
     def test_semantic_versions(self) -> None:
         self.assertGreater(installer.version_tuple("v1.2.0"), installer.version_tuple("1.1.9"))
+
+    def test_stable_version_is_newer_than_matching_beta(self) -> None:
+        self.assertGreater(installer.normalize_version("1.1.0"), installer.normalize_version("1.1.0-beta"))
+        self.assertGreater(installer.normalize_version("1.1.0-beta.2"), installer.normalize_version("1.1.0-beta.1"))
+
+
+class UpdateSafetyTests(unittest.TestCase):
+    class FakeResponse(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            self.close()
+
+    def test_download_requires_github_sha256_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            asset = {"browser_download_url": "https://github.com/example/release.exe"}
+            with self.assertRaisesRegex(RuntimeError, "SHA-256"):
+                installer.download_update(asset, Path(temp) / "installer.exe")
+
+    def test_download_accepts_only_matching_size_and_hash(self) -> None:
+        payload = b"verified installer"
+        digest = installer.hashlib.sha256(payload).hexdigest()
+        asset = {
+            "browser_download_url": "https://github.com/example/release.exe",
+            "digest": f"sha256:{digest}",
+            "size": len(payload),
+        }
+        with tempfile.TemporaryDirectory() as temp, patch.object(
+            installer.urllib.request, "urlopen", return_value=self.FakeResponse(payload)
+        ):
+            target = Path(temp) / "installer.exe"
+            installer.download_update(asset, target)
+            self.assertEqual(target.read_bytes(), payload)
+
+    def test_download_rejects_wrong_hash_without_publishing_file(self) -> None:
+        asset = {
+            "browser_download_url": "https://github.com/example/release.exe",
+            "digest": "sha256:" + "0" * 64,
+            "size": 3,
+        }
+        with tempfile.TemporaryDirectory() as temp, patch.object(
+            installer.urllib.request, "urlopen", return_value=self.FakeResponse(b"bad")
+        ):
+            target = Path(temp) / "installer.exe"
+            with self.assertRaisesRegex(RuntimeError, "SHA-256"):
+                installer.download_update(asset, target)
+            self.assertFalse(target.exists())
+
+    def test_failed_replacement_keeps_old_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "new.exe"
+            target = root / "old.exe"
+            source.write_bytes(b"new")
+            target.write_bytes(b"old")
+            with patch.object(installer.shutil, "copy2", side_effect=PermissionError("locked")):
+                with self.assertRaisesRegex(RuntimeError, "sostituire"):
+                    installer.apply_update_payload(source, target, retries=1, delay=0, launch=False)
+            self.assertEqual(target.read_bytes(), b"old")
+
+    def test_cleanup_removes_only_installer_cache_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp)
+            cache = work / "updates" / "v1.1.0"
+            cache.mkdir(parents=True)
+            known = cache / "ARK-Italian-Translation-123.exe"
+            partial = cache / "release.exe.download"
+            unrelated = cache / "keep.txt"
+            known.write_bytes(b"exe")
+            partial.write_bytes(b"partial")
+            unrelated.write_bytes(b"keep")
+            with patch.object(installer, "USER_WORK_DIR", work), patch.object(
+                installer, "release_manifest", return_value={"installer_asset": "ARK-Translation.exe"}
+            ):
+                self.assertEqual(installer.cleanup_update_cache(), 2)
+            self.assertTrue(unrelated.is_file())
+
+    def test_newer_installer_blocks_install_unless_explicitly_ignored(self) -> None:
+        update = {"update_available": True, "latest": "v1.1.0"}
+        with patch.object(installer, "check_for_updates", return_value=update):
+            with self.assertRaisesRegex(RuntimeError, "Aggiornalo"):
+                installer.ensure_current_installer()
+            installer.ensure_current_installer(ignore_update=True)
+
+
+class StatusTests(unittest.TestCase):
+    def test_recorded_version_is_scoped_to_detected_game(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            game, manifest_path = make_game(root)
+            location = installer.location_from_dir(game, "test", manifest_path)
+            work = root / "work"
+            work.mkdir()
+            state = {"game_dir": str(root / "another-game"), "translation_version": "1.0.0"}
+            (work / "installed_state.json").write_text(json.dumps(state), encoding="utf-8")
+            with patch.object(installer, "USER_WORK_DIR", work):
+                self.assertIsNone(installer.recorded_translation_version(location))
+                state["game_dir"] = str(game)
+                (work / "installed_state.json").write_text(json.dumps(state), encoding="utf-8")
+                self.assertEqual(installer.recorded_translation_version(location), "1.0.0")
+
+    def test_status_calls_out_unverified_game_update(self) -> None:
+        location = installer.GameLocation(Path("C:/ARK"), Path("C:/ARK/Paks"), None, "99999999", "test")
+        status = {
+            "manifest": {"translation_version": "1.1.0", "supported_builds": ["24159380"]},
+            "location": location,
+            "installed": {"installed": False, "current": False, "hash": None},
+            "installed_version": None,
+            "update": {"current": "1.1.0", "latest": "v1.1.0", "update_available": False},
+        }
+        overview = installer.status_overview(status, colors=False)
+        self.assertIn("ARK È STATO AGGIORNATO", overview["headline"])
 
 
 if __name__ == "__main__":
