@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 15 luglio 2026
+
+- Secondo audit totale del catalogo, concentrato su menu, interfaccia e testi brevi.
+- Riviste 1.783 voci rispetto alla v1.1.0: 1.782 dell'interfaccia e una descrizione composita.
+- Corretti falsi amici e residui inglesi come `DORSO`, `SETTINGS`, `FEATURED`, `Vibration`, `Always`, `WEIGHT` e `DLC PACKS`.
+- Uniformati pannello del campione, statistiche, opzioni avanzate, comandi contestuali e menu DLC.
+- Copertura confermata: 38.751 / 38.751 voci della build 24159380, con zero errori strutturali e zero avvisi.
+- Aggiornati PAK, dati pubblici e installer autonomo con la nuova revisione.
+
 ## 1.1.0 — 13 luglio 2026
 
 - Audit completo aggiuntivo di interfaccia, comandi, sistemi di gioco e descrizioni.

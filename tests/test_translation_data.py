@@ -53,13 +53,20 @@ class TranslationDataTests(unittest.TestCase):
             "GraphLiteral::3965879518": "Soffoca",
             "GraphLiteral::3909508214": "Lancia",
             "GraphLiteral::3919423147": "Nuoto rapido",
+            "GraphLiteral::1683757797": "IN EVIDENZA",
+            "GraphLiteral::1943104726": "SALUTE",
+            "GraphLiteral::2750903942": "Sempre",
+            "GraphLiteral::2820092888": "PACCHETTI DLC",
+            "GraphLiteral::3586629712": "Vibrazione",
+            "GraphLiteral::3707105056": "PESO",
+            "Content::1579144908": "SOVRIMPRESSIONI DEI DANNI DA SANGUE:",
         }
         for key, value in expected.items():
             self.assertEqual(values.get(key), value, key)
 
     def test_release_manifest(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.assertEqual(manifest["translation_version"], "1.1.0")
+        self.assertEqual(manifest["translation_version"], "1.2.0")
         self.assertEqual(manifest["supported_builds"], ["24159380"])
         self.assertRegex(manifest["payload_sha256"], r"^[0-9A-F]{64}$")
 

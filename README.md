@@ -78,12 +78,14 @@ Documenti\ARKItalianTranslation\backups
 ## Stato della traduzione
 
 - Copertura: **38.751 / 38.751 stringhe**.
-- Stringhe approvate editorialmente: **29.529**.
-- Risorse tecniche preservate intenzionalmente: **9.222**.
+- Stringhe approvate editorialmente: **29.513**.
+- Risorse tecniche preservate intenzionalmente: **9.238**.
 - Build verificata: **24159380**.
-- Versione della traduzione: **1.1.0**.
+- Versione della traduzione: **1.2.0**.
 - Revisione: interfaccia, descrizioni, sistemi di gioco, tutorial, note e testi narrativi.
 - Controlli finali: zero errori strutturali, zero avvisi e zero stringhe sospese.
+
+La v1.2.0 comprende un secondo audit integrale dei testi brevi e dell'interfaccia: **1.783 voci** sono cambiate rispetto alla v1.1.0. Sono stati corretti, tra gli altri, falsi amici, etichette inglesi residue, comandi poco naturali e termini fuori contesto nei menu.
 
 ## Aggiornamenti
 
