@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0 — 16 luglio 2026
+
+- Revisione editoriale manuale riga per riga di tutte le 38.751 voci del catalogo.
+- Riscritte 11.351 voci rispetto alla v1.2.0, con controllo di contesto, terminologia, tono e lore.
+- Eliminati gli ultimi residui inglesi sospetti e corrette ulteriori etichette innaturali nei menu, nell'interfaccia e nei testi brevi.
+- Verificata la nuova build Steam 24230788: il catalogo ufficiale non ha aggiunto o rimosso stringhe rispetto alla build precedente.
+- Ricompilato e riestratto il PAK: 38.751 corrispondenze esatte, zero chiavi mancanti, extra o difformi.
+- Migliorato l'autodetect in presenza di più installazioni Steam e irrobustiti backup e ripristino con controlli SHA-256.
+- Confermati zero errori strutturali, zero avvisi e zero decisioni editoriali aperte.
+
 ## 1.2.0 — 15 luglio 2026
 
 - Secondo audit totale del catalogo, concentrato su menu, interfaccia e testi brevi.

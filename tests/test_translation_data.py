@@ -47,9 +47,9 @@ class TranslationDataTests(unittest.TestCase):
             "GraphLiteral::3522676686": "TASTIERA",
             "GraphLiteral::1414235690": "CONTROLLER",
             "GraphLiteral::2667066748": "INTERFACCIA",
-            "GraphLiteral::2854445489": "ASPETTO",
+            "GraphLiteral::2854445489": "COSMETICI",
             "GraphLiteral::3998490662": "ATTIVO",
-            "GraphLiteral::3851593686": "Abilita particelle dei passi",
+            "GraphLiteral::3851593686": "Abilita le particelle dei passi",
             "GraphLiteral::3965879518": "Soffoca",
             "GraphLiteral::3909508214": "Lancia",
             "GraphLiteral::3919423147": "Nuoto rapido",
@@ -60,14 +60,21 @@ class TranslationDataTests(unittest.TestCase):
             "GraphLiteral::3586629712": "Vibrazione",
             "GraphLiteral::3707105056": "PESO",
             "Content::1579144908": "SOVRIMPRESSIONI DEI DANNI DA SANGUE:",
+            "Content::2498807650": "Gesto amichevole",
+            "GraphLiteral::159169701": "Hai trovato la chiave di crittografia principale! Ora ti resta solo da trovare il resto del codice di forzatura, da qualche parte in quell'armeria.",
         }
         for key, value in expected.items():
             self.assertEqual(values.get(key), value, key)
 
     def test_release_manifest(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.assertEqual(manifest["translation_version"], "1.2.0")
-        self.assertEqual(manifest["supported_builds"], ["24159380"])
+        self.assertEqual(manifest["translation_version"], "2.0.0")
+        self.assertEqual(manifest["supported_builds"], ["24159380", "24230788"])
+        self.assertEqual(manifest["payload_file"], "ARK_Italian_Review_24230788_P.pak")
+        self.assertEqual(
+            manifest["payload_sha256"],
+            "75931057DBED8995A8D3C501101452EC9CCBBD44D8137F2D46D0C62A71D72A88",
+        )
         self.assertRegex(manifest["payload_sha256"], r"^[0-9A-F]{64}$")
 
 

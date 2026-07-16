@@ -77,6 +77,9 @@ def main() -> int:
     exe = args.output.resolve() / str(manifest["installer_asset"])
     if not exe.is_file():
         raise FileNotFoundError(f"PyInstaller non ha creato {exe}")
+    unexpected = sorted(path.name for path in args.output.resolve().iterdir() if path.is_file() and path != exe)
+    if unexpected:
+        raise RuntimeError("La cartella di release deve contenere un solo EXE; file inattesi: " + ", ".join(unexpected))
     print("EXE:", exe)
     print("SHA-256:", sha256_file(exe))
     return 0

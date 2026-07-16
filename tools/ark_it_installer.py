@@ -289,7 +289,9 @@ def resolve_game_location(raw: str | None = None) -> GameLocation:
 
     detected = manifest_locations()
     if detected:
-        return detected[0]
+        manifest = release_manifest()
+        verified = next((location for location in detected if supported_build(location, manifest)), None)
+        return verified or detected[0]
     for candidate in fallback_candidates():
         game_dir = normalize_game_dir(candidate)
         if game_dir:
@@ -408,17 +410,34 @@ def timestamp() -> str:
 def backup_current_patch(location: GameLocation, manifest: dict | None = None) -> Path:
     manifest = manifest or release_manifest()
     target = installed_patch_path(location, manifest)
-    backup = USER_WORK_DIR / "backups" / timestamp()
-    backup.mkdir(parents=True, exist_ok=False)
+    root = USER_WORK_DIR / "backups"
+    root.mkdir(parents=True, exist_ok=True)
+    base_name = timestamp()
+    sequence = 0
+    while True:
+        name = base_name if sequence == 0 else f"{base_name}-{sequence:03d}"
+        backup = root / name
+        try:
+            backup.mkdir(exist_ok=False)
+            break
+        except FileExistsError:
+            sequence += 1
     existed = target.is_file()
+    previous_hash = None
     if existed:
-        shutil.copy2(target, backup / target.name)
+        previous_hash = sha256_file(target)
+        previous = backup / target.name
+        shutil.copy2(target, previous)
+        if sha256_file(previous) != previous_hash:
+            raise RuntimeError("La copia di backup non supera il controllo SHA-256.")
     write_json(
         backup / "backup_manifest.json",
         {
             "game_dir": str(location.game_dir),
             "target": str(target),
+            "backup_file": target.name,
             "target_existed": existed,
+            "target_sha256": previous_hash,
             "translation_version": manifest["translation_version"],
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         },
@@ -490,14 +509,30 @@ def restore_translation(location: GameLocation) -> Path:
     if not backup:
         raise FileNotFoundError("Nessun backup disponibile per questa installazione di ARK.")
     info = read_json(backup / "backup_manifest.json")
-    target = installed_patch_path(location)
-    previous = backup / target.name
+    raw_target = str(info.get("target") or "").strip()
+    target = Path(raw_target).expanduser().resolve() if raw_target else installed_patch_path(location)
+    paks_root = location.paks_dir.resolve()
+    try:
+        target.relative_to(paks_root)
+    except ValueError as exc:
+        raise RuntimeError("Il target salvato nel backup non appartiene alla cartella Paks rilevata.") from exc
+    backup_name = str(info.get("backup_file") or target.name)
+    previous = backup / backup_name
     if info.get("target_existed"):
         if not previous.is_file():
             raise FileNotFoundError("Il backup della patch precedente è incompleto.")
+        expected_hash = str(info.get("target_sha256") or "").strip().upper()
+        if expected_hash and sha256_file(previous) != expected_hash:
+            raise RuntimeError("Il backup della patch precedente non supera il controllo SHA-256.")
         temporary = target.with_suffix(target.suffix + ".restore")
-        shutil.copy2(previous, temporary)
-        os.replace(temporary, target)
+        try:
+            shutil.copy2(previous, temporary)
+            if expected_hash and sha256_file(temporary) != expected_hash:
+                raise RuntimeError("La copia di ripristino non supera il controllo SHA-256.")
+            os.replace(temporary, target)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
     elif target.is_file():
         target.unlink()
     state = USER_WORK_DIR / "installed_state.json"
@@ -675,24 +710,41 @@ def apply_update_payload(
     launch: bool = True,
     launch_args: list[str] | None = None,
 ) -> bool:
-    """Sostituisce il vecchio EXE solo dopo averne ottenuto l'accesso esclusivo."""
+    """Sostituisce il vecchio EXE con copia verificata e ripristino locale di emergenza."""
     source = source.resolve()
     target = target.resolve()
     if source == target or target.suffix.lower() != ".exe":
         raise ValueError("Percorso di aggiornamento non valido.")
     staging = target.with_name(target.name + ".new")
+    rollback = target.with_name(target.name + ".old")
+    expected_hash = sha256_file(source)
     last_error: Exception | None = None
     for _ in range(retries):
         try:
+            previous_hash = sha256_file(target) if target.is_file() else None
+            if previous_hash:
+                shutil.copy2(target, rollback)
+                if sha256_file(rollback) != previous_hash:
+                    raise RuntimeError("La copia di sicurezza del vecchio installer non supera il controllo SHA-256.")
             shutil.copy2(source, staging)
+            if sha256_file(staging) != expected_hash:
+                raise RuntimeError("La copia del nuovo installer non supera il controllo SHA-256.")
             os.replace(staging, target)
+            if sha256_file(target) != expected_hash:
+                if rollback.is_file():
+                    os.replace(rollback, target)
+                elif target.exists():
+                    target.unlink()
+                raise RuntimeError("Il nuovo installer non supera il controllo SHA-256 dopo la sostituzione.")
+            if rollback.exists():
+                rollback.unlink()
             if launch:
                 launch_kwargs: dict[str, object] = {"cwd": str(target.parent)}
                 if os.name == "nt":
                     launch_kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
                 subprocess.Popen([str(target), *(launch_args or [])], **launch_kwargs)
             return True
-        except (PermissionError, OSError) as exc:
+        except (PermissionError, OSError, RuntimeError) as exc:
             last_error = exc
             time.sleep(delay)
         finally:
@@ -701,6 +753,11 @@ def apply_update_payload(
                     staging.unlink()
                 except OSError:
                     pass
+    if rollback.exists():
+        try:
+            rollback.unlink()
+        except OSError:
+            pass
     raise RuntimeError(f"Impossibile sostituire il vecchio installer: {last_error}")
 
 

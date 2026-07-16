@@ -75,6 +75,38 @@ class DetectionTests(unittest.TestCase):
             self.assertEqual(found.game_dir, game.resolve())
             self.assertEqual(found.source, "percorso salvato")
 
+    def test_multiple_installations_prefer_supported_release_build(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            old_game, old_manifest = make_game(root / "old", build_id="11111111")
+            supported_game, supported_manifest = make_game(root / "supported", build_id="24230788")
+            locations = [
+                installer.location_from_dir(old_game, "manifest Steam", old_manifest),
+                installer.location_from_dir(supported_game, "manifest Steam", supported_manifest),
+            ]
+            with patch.object(installer, "load_settings", return_value={}), patch.object(
+                installer, "manifest_locations", return_value=locations
+            ), patch.object(installer, "release_manifest", return_value={"supported_builds": ["24230788"]}):
+                found = installer.resolve_game_location()
+            self.assertEqual(found.game_dir, supported_game.resolve())
+            self.assertEqual(found.build_id, "24230788")
+
+    def test_saved_path_still_precedes_supported_detected_installation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            saved_game, _ = make_game(root / "saved", build_id="11111111")
+            supported_game, supported_manifest = make_game(root / "supported", build_id="24230788")
+            supported = installer.location_from_dir(supported_game, "manifest Steam", supported_manifest)
+            work = root / "work"
+            with patch.object(installer, "USER_WORK_DIR", work), patch.object(
+                installer, "manifest_locations", return_value=[supported]
+            ), patch.object(installer, "release_manifest", return_value={"supported_builds": ["24230788"]}):
+                installer.save_game_dir(saved_game)
+                found = installer.resolve_game_location()
+            self.assertEqual(found.game_dir, saved_game.resolve())
+            self.assertEqual(found.build_id, "11111111")
+            self.assertEqual(found.source, "percorso salvato")
+
 
 class InstallRestoreTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -115,6 +147,9 @@ class InstallRestoreTests(unittest.TestCase):
             target = installer.installed_patch_path(self.location, self.manifest)
             self.assertEqual(target.read_bytes(), self.payload.read_bytes())
             self.assertTrue((backup / "backup_manifest.json").is_file())
+            info = installer.read_json(backup / "backup_manifest.json")
+            self.assertEqual(info["target"], str(target))
+            self.assertIsNone(info["target_sha256"])
             self.assertTrue(installer.installation_status(self.location, self.manifest)["current"])
 
     def test_restore_removes_patch_if_none_existed_before(self) -> None:
@@ -130,6 +165,58 @@ class InstallRestoreTests(unittest.TestCase):
         target.write_bytes(b"older community patch")
         with self.patches(), patch.object(installer, "process_running", return_value=[]):
             installer.install_translation(self.location)
+            installer.restore_translation(self.location)
+        self.assertEqual(target.read_bytes(), b"older community patch")
+
+    def test_backup_directories_do_not_collide_within_same_second(self) -> None:
+        target = installer.installed_patch_path(self.location, self.manifest)
+        target.write_bytes(b"older community patch")
+        with self.patches(), patch.object(installer, "timestamp", return_value="20260716-120000"):
+            first = installer.backup_current_patch(self.location, self.manifest)
+            second = installer.backup_current_patch(self.location, self.manifest)
+        self.assertNotEqual(first, second)
+        self.assertEqual(first.name, "20260716-120000")
+        self.assertEqual(second.name, "20260716-120000-001")
+        self.assertTrue((first / "backup_manifest.json").is_file())
+        self.assertTrue((second / "backup_manifest.json").is_file())
+
+    def test_restore_rejects_corrupted_backup_before_replacing_target(self) -> None:
+        target = installer.installed_patch_path(self.location, self.manifest)
+        target.write_bytes(b"older community patch")
+        with self.patches(), patch.object(installer, "process_running", return_value=[]):
+            backup = installer.install_translation(self.location)
+            (backup / target.name).write_bytes(b"corrupted backup")
+            with self.assertRaisesRegex(RuntimeError, "SHA-256"):
+                installer.restore_translation(self.location)
+        self.assertEqual(target.read_bytes(), self.payload.read_bytes())
+
+    def test_restore_uses_saved_target_after_installed_filename_changes(self) -> None:
+        original_target = installer.installed_patch_path(self.location, self.manifest)
+        original_target.write_bytes(b"original patch")
+        with self.patches(), patch.object(installer, "process_running", return_value=[]):
+            installer.backup_current_patch(self.location, self.manifest)
+            original_target.write_bytes(b"replacement patch")
+            changed_manifest = {**self.manifest, "installed_file": "ARK_Italian_Review_v2_P.pak"}
+            (self.bundle / "data" / "release_manifest.json").write_text(
+                json.dumps(changed_manifest), encoding="utf-8"
+            )
+            changed_target = installer.installed_patch_path(self.location, changed_manifest)
+            changed_target.write_bytes(b"new filename patch")
+            installer.restore_translation(self.location)
+        self.assertEqual(original_target.read_bytes(), b"original patch")
+        self.assertEqual(changed_target.read_bytes(), b"new filename patch")
+
+    def test_restore_supports_legacy_backup_without_target_or_hash(self) -> None:
+        target = installer.installed_patch_path(self.location, self.manifest)
+        target.write_bytes(b"older community patch")
+        with self.patches(), patch.object(installer, "process_running", return_value=[]):
+            backup = installer.install_translation(self.location)
+            info_path = backup / "backup_manifest.json"
+            info = installer.read_json(info_path)
+            info.pop("target")
+            info.pop("backup_file")
+            info.pop("target_sha256")
+            installer.write_json(info_path, info)
             installer.restore_translation(self.location)
         self.assertEqual(target.read_bytes(), b"older community patch")
 
@@ -215,6 +302,18 @@ class UpdateSafetyTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "sostituire"):
                     installer.apply_update_payload(source, target, retries=1, delay=0, launch=False)
             self.assertEqual(target.read_bytes(), b"old")
+
+    def test_successful_replacement_is_verified_and_removes_rollback_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "new.exe"
+            target = root / "old.exe"
+            source.write_bytes(b"new verified executable")
+            target.write_bytes(b"old executable")
+            installer.apply_update_payload(source, target, retries=1, delay=0, launch=False)
+            self.assertEqual(target.read_bytes(), source.read_bytes())
+            self.assertFalse(target.with_name(target.name + ".new").exists())
+            self.assertFalse(target.with_name(target.name + ".old").exists())
 
     def test_cleanup_removes_only_installer_cache_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

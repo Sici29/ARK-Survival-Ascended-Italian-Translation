@@ -33,13 +33,13 @@ The Center,The Center,preserve,Nome della mappa
 Crystal Isles,Crystal Isles,preserve,Nome della mappa
 Lost Island,Lost Island,preserve,Nome della mappa
 Astraeos,Astraeos,preserve,Nome della mappa
-Primitive,Primitive,context,Preservare quando è l'etichetta del livello di qualità; tradurre l'aggettivo comune
-Ramshackle,Ramshackle,context,Preservare quando è l'etichetta del livello di qualità
-Apprentice,Apprentice,context,Preservare quando è l'etichetta del livello di qualità
-Journeyman,Journeyman,context,Preservare quando è l'etichetta del livello di qualità
-Mastercraft,Mastercraft,context,Preservare quando è l'etichetta del livello di qualità
-Ascendant,Ascendant,context,Preservare quando è l'etichetta del livello di qualità
-Cryopod,Cryopod,preserve,Nome dell'oggetto
+Primitive,Primitivo,context,Livello di qualità; accordare Primitivo o Primitiva al contesto
+Ramshackle,Sgangherato,context,Livello di qualità; accordare Sgangherato o Sgangherata al contesto
+Apprentice,Apprendista,context,Livello di qualità
+Journeyman,Artigiano,context,Livello di qualità
+Mastercraft,Capolavoro,context,Livello di qualità
+Ascendant,Ascendente,context,Livello di qualità
+Cryopod,Criocapsula,translate,Nome italiano dell'oggetto adottato dalla revisione manuale v2
 Flak,Flak,preserve,Nome del set di armatura
 Tintoberry,Tintoberry,preserve,Nome ARK della bacca
 Amarberry,Amarberry,preserve,Nome ARK della bacca
@@ -52,8 +52,8 @@ Tidbit Glitch Discovery,Scoperta del glitch informativo,strict,Voce obiettivo Ge
 Tinkering Window,finestra di modifica,strict,Interfaccia di combinazione dei progetti
 Shield Generator Rig,Modulo generatore di scudi,strict,Modulo equipaggiamento
 Sapped!,Invischiato!,strict,Effetto della resina
-Hyperdrive,Hyperdrive,preserve,Nome della funzione
-ChargeLight,ChargeLight,preserve,Identificatore ARK
+Hyperdrive,Iperguida,strict,Nome italiano della funzione player-facing
+ChargeLight,Luce di carica,translate,Nome player-facing della luce prodotta dalle creature di Aberration
 RallyPoint,RallyPoint,preserve,Identificatore ARK
 Floaty Swim Bottom,Slip da bagno galleggiante,strict,Nome del costume
 Makeshift Megalab,Megalaboratorio improvvisato,strict,Nome della struttura
@@ -61,3 +61,19 @@ Frigid Armor,Armatura gelida,strict,Nome dell'effetto o ricompensa
 Moderate Medical,Medicina moderata,strict,Nome della categoria
 Natrix The Devious,Natrix l'Infida,strict,Nome proprio con epiteto traducibile
 Lost,Lost,context,Preservare quando indica la fazione; tradurre quando è un aggettivo o participio comune
+Lost King,Re dei Lost,strict,Titolo di Darius legato alla fazione Lost
+Lost Queen,Regina dei Lost,strict,Titolo legato alla fazione Lost
+Plant Species R,Specie vegetale R,strict,Nome player-facing della pianta
+Plant Species X,Specie vegetale X,strict,Nome player-facing della pianta
+Plant Species Z,Specie vegetale Z,strict,Nome player-facing della pianta
+Skin,Aspetto,context,Usare Aspetto per cosmetici applicabili o Costume per indumenti completi
+Emote,Gesto,strict,Nome dell'azione nell'interfaccia
+checkpoint,punto di controllo,translate,Termine comune dell'interfaccia e degli obiettivi
+Textures,Texture,context,Texture e' invariabile; usare Qualita' delle texture per un'opzione grafica
+Revenant,redivivo,strict,Classe di creature di Lost Colony; e' un nome comune anche nei testi narrativi e va localizzato
+Crystal Wyvern,Viverna di cristallo,context,Nome comune della creatura; localizzare anche le varianti Blood Ember e Tropical adattando genere e numero
+Iceworm,verme del ghiaccio,context,Nome comune della creatura di Ragnarok; adattare genere e numero nel contesto
+Wyvern,Viverna,context,Nome comune mitologico della creatura; adattare genere numero e varianti
+Ghillie,mimetico,context,Equipaggiamento mimetico; adattare al capo di armatura o al costume
+Terror Bird,Uccello del terrore,context,Nome comune descrittivo della creatura
+Anglerfish,Pesce pescatore,context,Nome comune della creatura acquatica
