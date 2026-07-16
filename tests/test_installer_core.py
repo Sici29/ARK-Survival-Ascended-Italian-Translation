@@ -118,14 +118,30 @@ class InstallRestoreTests(unittest.TestCase):
         self.bundle = self.root / "bundle"
         (self.bundle / "payload").mkdir(parents=True)
         (self.bundle / "data").mkdir(parents=True)
-        self.payload = self.bundle / "payload" / "patch.pak"
-        self.payload.write_bytes(b"verified translation patch")
+        payload_specs = [
+            ("patch.pak", "ARK_Italian_Review_P.pak", b"verified translation patch"),
+            ("ui.pak", "ARK_Italian_UI_Review-Windows.pak", b"verified ui pak"),
+            ("ui.ucas", "ARK_Italian_UI_Review-Windows.ucas", b"verified ui ucas"),
+            ("ui.utoc", "ARK_Italian_UI_Review-Windows.utoc", b"verified ui utoc"),
+        ]
+        self.payloads = []
+        manifest_payloads = []
+        for payload_name, installed_name, contents in payload_specs:
+            path = self.bundle / "payload" / payload_name
+            path.write_bytes(contents)
+            self.payloads.append(path)
+            manifest_payloads.append(
+                {
+                    "payload_file": payload_name,
+                    "payload_sha256": installer.sha256_file(path),
+                    "installed_file": installed_name,
+                }
+            )
+        self.payload = self.payloads[0]
         self.manifest = {
             "translation_version": "1.0.0",
             "supported_builds": ["24159380"],
-            "payload_file": "patch.pak",
-            "payload_sha256": installer.sha256_file(self.payload),
-            "installed_file": "ARK_Italian_Review_P.pak",
+            "payloads": manifest_payloads,
         }
         (self.bundle / "data" / "release_manifest.json").write_text(json.dumps(self.manifest), encoding="utf-8")
 
@@ -146,11 +162,25 @@ class InstallRestoreTests(unittest.TestCase):
             backup = installer.install_translation(self.location)
             target = installer.installed_patch_path(self.location, self.manifest)
             self.assertEqual(target.read_bytes(), self.payload.read_bytes())
+            for payload, definition in zip(self.payloads, self.manifest["payloads"]):
+                installed = installer.installed_patch_path(self.location, self.manifest, definition)
+                self.assertEqual(installed.read_bytes(), payload.read_bytes())
             self.assertTrue((backup / "backup_manifest.json").is_file())
             info = installer.read_json(backup / "backup_manifest.json")
-            self.assertEqual(info["target"], str(target))
-            self.assertIsNone(info["target_sha256"])
+            self.assertEqual(len(info["targets"]), 4)
+            self.assertEqual(info["targets"][0]["target"], str(target))
+            self.assertIsNone(info["targets"][0]["target_sha256"])
             self.assertTrue(installer.installation_status(self.location, self.manifest)["current"])
+
+    def test_status_is_current_only_when_every_payload_matches(self) -> None:
+        with self.patches(), patch.object(installer, "process_running", return_value=[]):
+            installer.install_translation(self.location)
+            broken = installer.installed_patch_path(self.location, self.manifest, self.manifest["payloads"][-1])
+            broken.write_bytes(b"tampered installed file")
+            status = installer.installation_status(self.location, self.manifest)
+        self.assertTrue(status["installed"])
+        self.assertFalse(status["current"])
+        self.assertEqual(len(status["files"]), 4)
 
     def test_restore_removes_patch_if_none_existed_before(self) -> None:
         with self.patches(), patch.object(installer, "process_running", return_value=[]):
@@ -159,14 +189,21 @@ class InstallRestoreTests(unittest.TestCase):
             self.assertTrue(target.is_file())
             installer.restore_translation(self.location)
             self.assertFalse(target.exists())
+            for definition in self.manifest["payloads"]:
+                self.assertFalse(installer.installed_patch_path(self.location, self.manifest, definition).exists())
 
     def test_restore_recovers_previous_patch(self) -> None:
-        target = installer.installed_patch_path(self.location, self.manifest)
-        target.write_bytes(b"older community patch")
+        previous = {}
+        for index, definition in enumerate(self.manifest["payloads"]):
+            target = installer.installed_patch_path(self.location, self.manifest, definition)
+            contents = f"older community patch {index}".encode()
+            target.write_bytes(contents)
+            previous[target] = contents
         with self.patches(), patch.object(installer, "process_running", return_value=[]):
             installer.install_translation(self.location)
             installer.restore_translation(self.location)
-        self.assertEqual(target.read_bytes(), b"older community patch")
+        for target, contents in previous.items():
+            self.assertEqual(target.read_bytes(), contents)
 
     def test_backup_directories_do_not_collide_within_same_second(self) -> None:
         target = installer.installed_patch_path(self.location, self.manifest)
@@ -196,7 +233,13 @@ class InstallRestoreTests(unittest.TestCase):
         with self.patches(), patch.object(installer, "process_running", return_value=[]):
             installer.backup_current_patch(self.location, self.manifest)
             original_target.write_bytes(b"replacement patch")
-            changed_manifest = {**self.manifest, "installed_file": "ARK_Italian_Review_v2_P.pak"}
+            changed_manifest = {
+                **self.manifest,
+                "payloads": [
+                    {**self.manifest["payloads"][0], "installed_file": "ARK_Italian_Review_v2_P.pak"},
+                    *self.manifest["payloads"][1:],
+                ],
+            }
             (self.bundle / "data" / "release_manifest.json").write_text(
                 json.dumps(changed_manifest), encoding="utf-8"
             )
@@ -209,13 +252,21 @@ class InstallRestoreTests(unittest.TestCase):
     def test_restore_supports_legacy_backup_without_target_or_hash(self) -> None:
         target = installer.installed_patch_path(self.location, self.manifest)
         target.write_bytes(b"older community patch")
+        first = self.manifest["payloads"][0]
+        legacy_manifest = {
+            "translation_version": "0.9.0",
+            "payload_file": first["payload_file"],
+            "payload_sha256": first["payload_sha256"],
+            "installed_file": first["installed_file"],
+        }
         with self.patches(), patch.object(installer, "process_running", return_value=[]):
-            backup = installer.install_translation(self.location)
+            backup = installer.backup_current_patch(self.location, legacy_manifest)
+            target.write_bytes(b"replacement patch")
             info_path = backup / "backup_manifest.json"
             info = installer.read_json(info_path)
-            info.pop("target")
-            info.pop("backup_file")
-            info.pop("target_sha256")
+            legacy_target = info["targets"][0]
+            info.pop("targets")
+            info["target_existed"] = legacy_target["target_existed"]
             installer.write_json(info_path, info)
             installer.restore_translation(self.location)
         self.assertEqual(target.read_bytes(), b"older community patch")
@@ -234,9 +285,35 @@ class InstallRestoreTests(unittest.TestCase):
 
     def test_tampered_payload_is_refused(self) -> None:
         with self.patches(), patch.object(installer, "process_running", return_value=[]):
-            self.payload.write_bytes(b"tampered")
+            self.payloads[-1].write_bytes(b"tampered")
             with self.assertRaisesRegex(RuntimeError, "SHA-256"):
                 installer.install_translation(self.location)
+
+    def test_partial_install_failure_restores_every_previous_file(self) -> None:
+        previous = {}
+        for index, definition in enumerate(self.manifest["payloads"]):
+            target = installer.installed_patch_path(self.location, self.manifest, definition)
+            contents = f"previous file {index}".encode()
+            target.write_bytes(contents)
+            previous[target] = contents
+        real_replace = installer.os.replace
+        replacement_count = 0
+
+        def fail_second_install_replace(source, target):
+            nonlocal replacement_count
+            if str(source).endswith(".tmp"):
+                replacement_count += 1
+                if replacement_count == 2:
+                    raise OSError("simulated replacement failure")
+            return real_replace(source, target)
+
+        with self.patches(), patch.object(installer, "process_running", return_value=[]), patch.object(
+            installer.os, "replace", side_effect=fail_second_install_replace
+        ):
+            with self.assertRaisesRegex(OSError, "simulated replacement failure"):
+                installer.install_translation(self.location)
+        for target, contents in previous.items():
+            self.assertEqual(target.read_bytes(), contents)
 
 
 class VersionTests(unittest.TestCase):

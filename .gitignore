@@ -9,3 +9,5 @@ payload/
 *.spec
 *.exe
 *.pak
+*.ucas
+*.utoc

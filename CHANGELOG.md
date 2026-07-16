@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.1 — 16 luglio 2026
+
+- Nuovo audit manuale mirato a menu, interfaccia, testi brevi e residui inglesi player-facing.
+- Corrette 66 voci del catalogo: 36 etichette visibili classificate erroneamente come tecniche e 30 testi secondari o duplicati.
+- Tradotti `FACE`, `Scalp`, `Brows`, `Foot Size`, `Camera`, `Character`, `Controls`, `Display`, `Password`, valori di opzione e gradi qualitativi rimasti in inglese.
+- Corretti i widget del menu DLC che incorporavano direttamente `DLC PACKS` e `Owned` fuori dal catalogo di localizzazione.
+- Ricompilato e riestratto il PAK: 38.751 corrispondenze esatte, zero chiavi mancanti, extra o difformi.
+- Estesi installazione, controllo stato, backup e ripristino ai componenti dell'override UI, tutti verificati singolarmente tramite SHA-256.
+
 ## 2.0.0 — 16 luglio 2026
 
 - Revisione editoriale manuale riga per riga di tutte le 38.751 voci del catalogo.

@@ -1,12 +1,31 @@
 {
-  "translation_version": "2.0.0",
+  "translation_version": "2.0.1",
   "supported_builds": [
     "24159380",
     "24230788"
   ],
-  "payload_file": "ARK_Italian_Review_24230788_P.pak",
-  "payload_sha256": "75931057DBED8995A8D3C501101452EC9CCBBD44D8137F2D46D0C62A71D72A88",
-  "installed_file": "ARK_Italian_Review_P.pak",
+  "payloads": [
+    {
+      "payload_file": "ARK_Italian_Review_24230788_P.pak",
+      "installed_file": "ARK_Italian_Review_P.pak",
+      "payload_sha256": "88142178794EA50D0AE8670A8D8C4E01686D24044C34B8256F8E637A6D86ED9B"
+    },
+    {
+      "payload_file": "zz_ARK_Italian_UI_Review-Windows.pak",
+      "installed_file": "zz_ARK_Italian_UI_Review-Windows.pak",
+      "payload_sha256": "75E7144577253917F6DA7312EF5E585B12FB728226A22B0938323751A6B555CD"
+    },
+    {
+      "payload_file": "zz_ARK_Italian_UI_Review-Windows.ucas",
+      "installed_file": "zz_ARK_Italian_UI_Review-Windows.ucas",
+      "payload_sha256": "7B38AB7B90FC19F5B4756BB6AF725D1EB11CE76042A0EAD15E99523FDC27FC69"
+    },
+    {
+      "payload_file": "zz_ARK_Italian_UI_Review-Windows.utoc",
+      "installed_file": "zz_ARK_Italian_UI_Review-Windows.utoc",
+      "payload_sha256": "0C5C72C1F2CCF8B063CDB5300142D80A1E31DC8E9F0BA1FC201072F184523913"
+    }
+  ],
   "installer_asset": "ARK-Survival-Ascended-Traduzione-Italiana.exe",
   "github_project_url": "https://github.com/Sici29/ARK-Survival-Ascended-Italian-Translation",
   "github_issues_url": "https://github.com/Sici29/ARK-Survival-Ascended-Italian-Translation/issues",

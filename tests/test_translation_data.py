@@ -68,14 +68,36 @@ class TranslationDataTests(unittest.TestCase):
 
     def test_release_manifest(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.assertEqual(manifest["translation_version"], "2.0.0")
+        self.assertEqual(manifest["translation_version"], "2.0.1")
         self.assertEqual(manifest["supported_builds"], ["24159380", "24230788"])
-        self.assertEqual(manifest["payload_file"], "ARK_Italian_Review_24230788_P.pak")
-        self.assertEqual(
-            manifest["payload_sha256"],
-            "75931057DBED8995A8D3C501101452EC9CCBBD44D8137F2D46D0C62A71D72A88",
-        )
-        self.assertRegex(manifest["payload_sha256"], r"^[0-9A-F]{64}$")
+        expected = [
+            (
+                "ARK_Italian_Review_24230788_P.pak",
+                "ARK_Italian_Review_P.pak",
+                "88142178794EA50D0AE8670A8D8C4E01686D24044C34B8256F8E637A6D86ED9B",
+            ),
+            (
+                "zz_ARK_Italian_UI_Review-Windows.pak",
+                "zz_ARK_Italian_UI_Review-Windows.pak",
+                "75E7144577253917F6DA7312EF5E585B12FB728226A22B0938323751A6B555CD",
+            ),
+            (
+                "zz_ARK_Italian_UI_Review-Windows.ucas",
+                "zz_ARK_Italian_UI_Review-Windows.ucas",
+                "7B38AB7B90FC19F5B4756BB6AF725D1EB11CE76042A0EAD15E99523FDC27FC69",
+            ),
+            (
+                "zz_ARK_Italian_UI_Review-Windows.utoc",
+                "zz_ARK_Italian_UI_Review-Windows.utoc",
+                "0C5C72C1F2CCF8B063CDB5300142D80A1E31DC8E9F0BA1FC201072F184523913",
+            ),
+        ]
+        actual = [
+            (item["payload_file"], item["installed_file"], item["payload_sha256"])
+            for item in manifest["payloads"]
+        ]
+        self.assertEqual(actual, expected)
+        self.assertTrue(all(re.fullmatch(r"[0-9A-F]{64}", item[2]) for item in actual))
 
 
 if __name__ == "__main__":

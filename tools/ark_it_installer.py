@@ -337,32 +337,91 @@ def configure_game_dir() -> GameLocation | None:
     return location
 
 
-def payload_path(manifest: dict | None = None) -> Path:
+def manifest_payloads(manifest: dict | None = None) -> list[dict[str, str]]:
+    """Restituisce i payload normalizzati, accettando anche il vecchio schema singolo."""
     manifest = manifest or release_manifest()
-    return PAYLOAD_DIR / str(manifest["payload_file"])
+    raw_payloads = manifest.get("payloads")
+    if raw_payloads is None:
+        raw_payloads = [
+            {
+                "payload_file": manifest.get("payload_file"),
+                "installed_file": manifest.get("installed_file"),
+                "payload_sha256": manifest.get("payload_sha256"),
+            }
+        ]
+    if not isinstance(raw_payloads, list) or not raw_payloads:
+        raise ValueError("Il manifest non contiene payload validi.")
+
+    normalized: list[dict[str, str]] = []
+    payload_names: set[str] = set()
+    installed_names: set[str] = set()
+    for item in raw_payloads:
+        if not isinstance(item, dict):
+            raise ValueError("Voce payload non valida nel manifest.")
+        payload_file = str(item.get("payload_file") or "").strip()
+        installed_file = str(item.get("installed_file") or "").strip()
+        digest = str(item.get("payload_sha256") or "").strip().upper()
+        for label, name in (("payload", payload_file), ("destinazione", installed_file)):
+            if not name or Path(name).name != name or name in {".", ".."}:
+                raise ValueError(f"Nome file {label} non sicuro nel manifest: {name!r}")
+        if not re.fullmatch(r"[0-9A-F]{64}", digest):
+            raise ValueError(f"SHA-256 non valido per {payload_file}.")
+        if payload_file in payload_names or installed_file in installed_names:
+            raise ValueError("Il manifest contiene nomi payload o destinazioni duplicati.")
+        payload_names.add(payload_file)
+        installed_names.add(installed_file)
+        normalized.append(
+            {
+                "payload_file": payload_file,
+                "installed_file": installed_file,
+                "payload_sha256": digest,
+            }
+        )
+    return normalized
 
 
-def installed_patch_path(location: GameLocation, manifest: dict | None = None) -> Path:
+def payload_path(manifest: dict | None = None, payload: dict | None = None) -> Path:
     manifest = manifest or release_manifest()
-    return location.paks_dir / str(manifest["installed_file"])
+    payload = payload or manifest_payloads(manifest)[0]
+    return PAYLOAD_DIR / str(payload["payload_file"])
+
+
+def installed_patch_path(
+    location: GameLocation, manifest: dict | None = None, payload: dict | None = None
+) -> Path:
+    manifest = manifest or release_manifest()
+    payload = payload or manifest_payloads(manifest)[0]
+    return location.paks_dir / str(payload["installed_file"])
 
 
 def payload_is_valid(manifest: dict | None = None) -> bool:
     manifest = manifest or release_manifest()
-    source = payload_path(manifest)
-    return source.is_file() and sha256_file(source) == str(manifest["payload_sha256"]).upper()
+    return all(
+        (source := payload_path(manifest, payload)).is_file()
+        and sha256_file(source) == payload["payload_sha256"]
+        for payload in manifest_payloads(manifest)
+    )
 
 
 def installation_status(location: GameLocation, manifest: dict | None = None) -> dict:
     manifest = manifest or release_manifest()
-    target = installed_patch_path(location, manifest)
-    if not target.is_file():
-        return {"installed": False, "current": False, "hash": None}
-    digest = sha256_file(target)
+    files = []
+    for payload in manifest_payloads(manifest):
+        target = installed_patch_path(location, manifest, payload)
+        digest = sha256_file(target) if target.is_file() else None
+        files.append(
+            {
+                "file": target.name,
+                "installed": digest is not None,
+                "current": digest == payload["payload_sha256"],
+                "hash": digest,
+            }
+        )
     return {
-        "installed": True,
-        "current": digest == str(manifest["payload_sha256"]).upper(),
-        "hash": digest,
+        "installed": any(item["installed"] for item in files),
+        "current": bool(files) and all(item["current"] for item in files),
+        "hash": files[0]["hash"] if files else None,
+        "files": files,
     }
 
 
@@ -409,7 +468,6 @@ def timestamp() -> str:
 
 def backup_current_patch(location: GameLocation, manifest: dict | None = None) -> Path:
     manifest = manifest or release_manifest()
-    target = installed_patch_path(location, manifest)
     root = USER_WORK_DIR / "backups"
     root.mkdir(parents=True, exist_ok=True)
     base_name = timestamp()
@@ -422,22 +480,31 @@ def backup_current_patch(location: GameLocation, manifest: dict | None = None) -
             break
         except FileExistsError:
             sequence += 1
-    existed = target.is_file()
-    previous_hash = None
-    if existed:
-        previous_hash = sha256_file(target)
-        previous = backup / target.name
-        shutil.copy2(target, previous)
-        if sha256_file(previous) != previous_hash:
-            raise RuntimeError("La copia di backup non supera il controllo SHA-256.")
+    targets = []
+    for payload in manifest_payloads(manifest):
+        target = installed_patch_path(location, manifest, payload)
+        existed = target.is_file()
+        previous_hash = None
+        if existed:
+            previous_hash = sha256_file(target)
+            previous = backup / target.name
+            shutil.copy2(target, previous)
+            if sha256_file(previous) != previous_hash:
+                raise RuntimeError(f"La copia di backup di {target.name} non supera il controllo SHA-256.")
+        targets.append(
+            {
+                "target": str(target),
+                "backup_file": target.name,
+                "target_existed": existed,
+                "target_sha256": previous_hash,
+            }
+        )
     write_json(
         backup / "backup_manifest.json",
         {
+            "schema_version": 2,
             "game_dir": str(location.game_dir),
-            "target": str(target),
-            "backup_file": target.name,
-            "target_existed": existed,
-            "target_sha256": previous_hash,
+            "targets": targets,
             "translation_version": manifest["translation_version"],
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         },
@@ -459,25 +526,49 @@ def install_translation(location: GameLocation, force: bool = False) -> Path:
         )
     location.paks_dir.mkdir(parents=True, exist_ok=True)
     backup = backup_current_patch(location, manifest)
-    source = payload_path(manifest)
-    target = installed_patch_path(location, manifest)
-    temporary = target.with_suffix(target.suffix + ".tmp")
+    payloads = manifest_payloads(manifest)
+    staged: list[tuple[dict[str, str], Path, Path]] = []
     try:
-        shutil.copy2(source, temporary)
-        if sha256_file(temporary) != str(manifest["payload_sha256"]).upper():
-            raise RuntimeError("La copia della patch non supera il controllo SHA-256.")
-        os.replace(temporary, target)
+        for payload in payloads:
+            source = payload_path(manifest, payload)
+            target = installed_patch_path(location, manifest, payload)
+            temporary = target.with_name(target.name + ".tmp")
+            staged.append((payload, target, temporary))
+            shutil.copy2(source, temporary)
+            if sha256_file(temporary) != payload["payload_sha256"]:
+                raise RuntimeError(f"La copia di {target.name} non supera il controllo SHA-256.")
+        for _payload, target, temporary in staged:
+            os.replace(temporary, target)
+        if not installation_status(location, manifest)["current"]:
+            raise RuntimeError("La traduzione installata non supera il controllo finale SHA-256.")
+    except Exception:
+        try:
+            _restore_backup(location, backup)
+        except Exception as rollback_error:
+            raise RuntimeError(
+                "Installazione non riuscita e ripristino automatico incompleto: " + str(rollback_error)
+            ) from rollback_error
+        raise
     finally:
-        if temporary.exists():
-            temporary.unlink()
+        for _payload, _target, temporary in staged:
+            if temporary.exists():
+                temporary.unlink()
+    installed_files = [
+        {
+            "patch": str(installed_patch_path(location, manifest, payload)),
+            "payload_sha256": payload["payload_sha256"],
+        }
+        for payload in payloads
+    ]
     write_json(
         USER_WORK_DIR / "installed_state.json",
         {
             "game_dir": str(location.game_dir),
-            "patch": str(target),
+            "patch": installed_files[0]["patch"],
+            "patches": installed_files,
             "backup": str(backup),
             "translation_version": manifest["translation_version"],
-            "payload_sha256": manifest["payload_sha256"],
+            "payload_sha256": installed_files[0]["payload_sha256"],
             "installed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         },
     )
@@ -501,6 +592,85 @@ def latest_backup_for(location: GameLocation) -> Path | None:
     return None
 
 
+def _backup_targets(location: GameLocation, backup: Path, info: dict) -> list[dict]:
+    raw_targets = info.get("targets")
+    if not isinstance(raw_targets, list):
+        target = str(info.get("target") or "").strip()
+        raw_targets = [
+            {
+                "target": target or str(installed_patch_path(location)),
+                "backup_file": info.get("backup_file"),
+                "target_existed": info.get("target_existed"),
+                "target_sha256": info.get("target_sha256"),
+            }
+        ]
+    if not raw_targets:
+        raise RuntimeError("Il manifest del backup non contiene file da ripristinare.")
+
+    paks_root = location.paks_dir.resolve()
+    records = []
+    seen: set[Path] = set()
+    for item in raw_targets:
+        if not isinstance(item, dict):
+            raise RuntimeError("Il manifest del backup contiene una voce non valida.")
+        raw_target = str(item.get("target") or "").strip()
+        target = Path(raw_target).expanduser().resolve()
+        try:
+            target.relative_to(paks_root)
+        except ValueError as exc:
+            raise RuntimeError("Un target salvato nel backup non appartiene alla cartella Paks rilevata.") from exc
+        if target in seen:
+            raise RuntimeError("Il manifest del backup contiene destinazioni duplicate.")
+        seen.add(target)
+        backup_name = str(item.get("backup_file") or target.name)
+        if Path(backup_name).name != backup_name:
+            raise RuntimeError("Il manifest del backup contiene un nome file non sicuro.")
+        previous = backup / backup_name
+        existed = bool(item.get("target_existed"))
+        expected_hash = str(item.get("target_sha256") or "").strip().upper()
+        if existed:
+            if not previous.is_file():
+                raise FileNotFoundError(f"Il backup di {target.name} è incompleto.")
+            if expected_hash and sha256_file(previous) != expected_hash:
+                raise RuntimeError(f"Il backup di {target.name} non supera il controllo SHA-256.")
+        records.append(
+            {
+                "target": target,
+                "previous": previous,
+                "existed": existed,
+                "expected_hash": expected_hash,
+            }
+        )
+    return records
+
+
+def _restore_backup(location: GameLocation, backup: Path) -> None:
+    info = read_json(backup / "backup_manifest.json")
+    records = _backup_targets(location, backup, info)
+    staged: list[tuple[dict, Path]] = []
+    try:
+        for record in records:
+            if not record["existed"]:
+                continue
+            target = record["target"]
+            temporary = target.with_name(target.name + ".restore")
+            staged.append((record, temporary))
+            shutil.copy2(record["previous"], temporary)
+            if record["expected_hash"] and sha256_file(temporary) != record["expected_hash"]:
+                raise RuntimeError(f"La copia di ripristino di {target.name} non supera il controllo SHA-256.")
+        staged_by_target = {record["target"]: temporary for record, temporary in staged}
+        for record in records:
+            target = record["target"]
+            if record["existed"]:
+                os.replace(staged_by_target[target], target)
+            elif target.is_file():
+                target.unlink()
+    finally:
+        for _record, temporary in staged:
+            if temporary.exists():
+                temporary.unlink()
+
+
 def restore_translation(location: GameLocation) -> Path:
     running = process_running()
     if running:
@@ -508,33 +678,7 @@ def restore_translation(location: GameLocation) -> Path:
     backup = latest_backup_for(location)
     if not backup:
         raise FileNotFoundError("Nessun backup disponibile per questa installazione di ARK.")
-    info = read_json(backup / "backup_manifest.json")
-    raw_target = str(info.get("target") or "").strip()
-    target = Path(raw_target).expanduser().resolve() if raw_target else installed_patch_path(location)
-    paks_root = location.paks_dir.resolve()
-    try:
-        target.relative_to(paks_root)
-    except ValueError as exc:
-        raise RuntimeError("Il target salvato nel backup non appartiene alla cartella Paks rilevata.") from exc
-    backup_name = str(info.get("backup_file") or target.name)
-    previous = backup / backup_name
-    if info.get("target_existed"):
-        if not previous.is_file():
-            raise FileNotFoundError("Il backup della patch precedente è incompleto.")
-        expected_hash = str(info.get("target_sha256") or "").strip().upper()
-        if expected_hash and sha256_file(previous) != expected_hash:
-            raise RuntimeError("Il backup della patch precedente non supera il controllo SHA-256.")
-        temporary = target.with_suffix(target.suffix + ".restore")
-        try:
-            shutil.copy2(previous, temporary)
-            if expected_hash and sha256_file(temporary) != expected_hash:
-                raise RuntimeError("La copia di ripristino non supera il controllo SHA-256.")
-            os.replace(temporary, target)
-        finally:
-            if temporary.exists():
-                temporary.unlink()
-    elif target.is_file():
-        target.unlink()
+    _restore_backup(location, backup)
     state = USER_WORK_DIR / "installed_state.json"
     if state.is_file():
         state.unlink()
@@ -946,7 +1090,14 @@ def print_technical_status(status: dict, colors: bool) -> None:
     print("Build rilevata     :", location.build_id if location else "non rilevata")
     print("Build supportate   :", ", ".join(str(item) for item in manifest.get("supported_builds", [])) or "nessuna")
     print("Versione registrata:", status.get("installed_version") or "non registrata")
-    print("Hash PAK installato:", installed.get("hash") or "non presente")
+    files = installed.get("files") or []
+    if files:
+        print("File della traduzione:")
+        for item in files:
+            state = item.get("hash") or "non presente"
+            print(f"  {item.get('file')}: {state}")
+    else:
+        print("Hash PAK installato:", installed.get("hash") or "non presente")
     print("=" * 68)
 
 

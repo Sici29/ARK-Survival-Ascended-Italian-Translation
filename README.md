@@ -37,8 +37,8 @@ L'installer:
 - verifica la presenza reale di `ArkAscended.exe` e del PAK principale;
 - mostra percorso, build rilevata e stato della traduzione;
 - impedisce l'avvio simultaneo di più copie dell'installer;
-- crea un backup prima di modificare qualsiasi file;
-- copia la patch in modo atomico e ne verifica l'hash SHA-256;
+- crea un backup completo prima di modificare qualsiasi file della patch;
+- copia e verifica singolarmente tutti i componenti incorporati tramite SHA-256;
 - permette di ripristinare la situazione precedente dal menu.
 
 ### 4. Seleziona Italiano
@@ -78,14 +78,14 @@ Documenti\ARKItalianTranslation\backups
 ## Stato della traduzione
 
 - Copertura: **38.751 / 38.751 stringhe**.
-- Stringhe approvate editorialmente: **29.419**.
-- Risorse tecniche preservate intenzionalmente: **9.332**.
+- Stringhe approvate editorialmente: **29.485**.
+- Risorse tecniche preservate intenzionalmente: **9.266**.
 - Build verificata più recente: **24230788**.
-- Versione della traduzione: **2.0.0**.
+- Versione della traduzione: **2.0.1**.
 - Revisione: interfaccia, descrizioni, sistemi di gioco, tutorial, note e testi narrativi.
 - Controlli finali: zero errori strutturali, zero avvisi e zero stringhe sospese.
 
-La v2.0.0 è una revisione editoriale manuale riga per riga dell'intero catalogo: tutte le **38.751 voci** sono state lette e classificate, e **11.351** sono state riscritte rispetto alla v1.2.0. Sono stati corretti residui inglesi, falsi amici, traduzioni letterali, termini incoerenti con ARK e formulazioni innaturali, con particolare attenzione a menu, interfaccia e testi brevi.
+La v2.0.0 ha completato la revisione editoriale manuale riga per riga dell'intero catalogo. La v2.0.1 aggiunge un ulteriore controllo mirato su menu, interfaccia e testi brevi: corregge **66 voci** sfuggite al controllo precedente, comprese `FACE`, `Scalp`, `Brows`, `Foot Size`, `Camera`, `Character`, `Controls`, `Display`, `Password` e vari valori di opzione. Corregge inoltre `Owned` e `DLC PACKS` nei widget del menu DLC che li incorporavano direttamente fuori dal catalogo di localizzazione.
 
 ## Aggiornamenti
 
@@ -95,7 +95,7 @@ Se ARK riceve una build non ancora verificata, l'installer non procede silenzios
 
 ## Limiti della copertura
 
-Il dato **38.751 / 38.751** indica la copertura completa del catalogo di localizzazione estratto dalla build verificata. Messaggi diagnostici generati dal server o dal motore, testi costruiti dinamicamente e contenuti aggiunti da mod possono trovarsi fuori dal catalogo e quindi restare in inglese. Un esempio è il messaggio tecnico `Server hitch detected`, che non proviene dal file di localizzazione sostituito dalla patch.
+Il dato **38.751 / 38.751** indica la copertura completa del catalogo di localizzazione estratto dalla build verificata. La v2.0.1 include anche un override minimo per i widget DLC che conservavano testi visibili fuori catalogo. Messaggi diagnostici generati dal server o dal motore e contenuti aggiunti da mod restano perimetri distinti: per esempio `Server hitch detected` non è un testo dell'interfaccia localizzabile tramite il catalogo del gioco.
 
 ## Crediti e collegamenti
 
@@ -130,7 +130,7 @@ Il repository contiene soltanto i sorgenti necessari alla manutenzione:
 - `tools/export_public_data.py`: esportazione byte-safe del master pubblico;
 - `tests/`: controlli automatici per rilevamento, installazione e ripristino.
 
-Il repository non contiene archivi originali di ARK né il PAK distribuibile. Il PAK verificato viene aggiunto soltanto durante la compilazione locale e incorporato nell'EXE pubblicato nella Release.
+Il repository non contiene archivi originali di ARK né i payload distribuibili. I componenti verificati vengono aggiunti soltanto durante la compilazione locale e incorporati nell'unico EXE pubblicato nella Release.
 
 </details>
 
