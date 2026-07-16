@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.2 — 16 luglio 2026
+
+- Applicati 45 adattamenti editoriali per evitare italianizzazioni forzate di termini ormai comuni nel gaming italiano.
+- Ripristinati contestualmente `Camera`, `Password`, `Display`, `Gameplay`, `Multiplayer`, `Online`, `Offline`, `Preset`, `Skin` cosmetica e `Ping`.
+- Conservate le traduzioni italiane quando più naturali: `telecamera` nelle frasi descrittive, `pelle` e `carnagione` negli usi anatomici, `mostra/visualizza` per il verbo `display`.
+- Aggiornato il glossario per distinguere anglicismi comuni da residui di localizzazione reali.
+- Ricompilato e riestratto il PAK: 38.751 corrispondenze esatte, zero chiavi mancanti, extra o difformi.
+
 ## 2.0.1 — 16 luglio 2026
 
 - Nuovo audit manuale mirato a menu, interfaccia, testi brevi e residui inglesi player-facing.

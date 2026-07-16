@@ -1,5 +1,5 @@
 {
-  "translation_version": "2.0.1",
+  "translation_version": "2.0.2",
   "supported_builds": [
     "24159380",
     "24230788"
@@ -8,7 +8,7 @@
     {
       "payload_file": "ARK_Italian_Review_24230788_P.pak",
       "installed_file": "ARK_Italian_Review_P.pak",
-      "payload_sha256": "88142178794EA50D0AE8670A8D8C4E01686D24044C34B8256F8E637A6D86ED9B"
+      "payload_sha256": "E32449D5077D73F3D29DB5505C39651F837AC53E0AD96EE20FFD98D2A8C4A0BB"
     },
     {
       "payload_file": "zz_ARK_Italian_UI_Review-Windows.pak",

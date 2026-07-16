@@ -66,7 +66,18 @@ Lost Queen,Regina dei Lost,strict,Titolo legato alla fazione Lost
 Plant Species R,Specie vegetale R,strict,Nome player-facing della pianta
 Plant Species X,Specie vegetale X,strict,Nome player-facing della pianta
 Plant Species Z,Specie vegetale Z,strict,Nome player-facing della pianta
-Skin,Aspetto,context,Usare Aspetto per cosmetici applicabili o Costume per indumenti completi
+Skin,Skin,context,Termine comune per cosmetici; usare pelle o carnagione soltanto per anatomia e colore corporeo
+Camera,Camera,context,Termine comune nelle interfacce di gioco; usare telecamera quando la frase italiana lo richiede
+Password,Password,context,Termine italiano d'uso comune per autenticazione
+Display,Display,context,Termine comune come etichetta UI; tradurre il verbo display con mostra o visualizza
+Gameplay,Gameplay,context,Termine comune per sistemi e impostazioni di gioco
+Gamepad,Gamepad,context,Termine comune; controller resta ammesso quando più naturale nel contesto
+Multiplayer,Multiplayer,context,Termine comune nel gaming italiano
+Singleplayer,Singleplayer,context,Termine comune nel gaming italiano
+Online,Online,context,Stato e termine di rete ormai comuni in italiano
+Offline,Offline,context,Stato e termine di rete ormai comuni in italiano
+Preset,Preset,context,Termine comune per profili e configurazioni richiamabili
+Ping,Ping,context,Termine comune per latenza e segnalazioni contestuali di squadra
 Emote,Gesto,strict,Nome dell'azione nell'interfaccia
 checkpoint,punto di controllo,translate,Termine comune dell'interfaccia e degli obiettivi
 Textures,Texture,context,Texture e' invariabile; usare Qualita' delle texture per un'opzione grafica

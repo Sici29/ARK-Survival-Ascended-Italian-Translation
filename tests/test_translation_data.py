@@ -66,15 +66,32 @@ class TranslationDataTests(unittest.TestCase):
         for key, value in expected.items():
             self.assertEqual(values.get(key), value, key)
 
+    def test_natural_gaming_anglicisms_are_preserved(self) -> None:
+        values = {row["key"]: row["it"] for row in self.rows}
+        expected = {
+            "Content::2054521003": "Camera",
+            "GraphLiteral::2520716185": "Password",
+            "GraphLiteral::4174992090": "Display",
+            "Content::347257845": "GAMEPLAY",
+            "Content::1918923023": "MULTIPLAYER",
+            "Globals::4265803950": "ONLINE",
+            "Globals::2010672823": "OFFLINE",
+            "Content::2480994461": "Preset",
+            "Content::1085785189": "Skin",
+            "Globals::3019685387": "PING",
+        }
+        for key, value in expected.items():
+            self.assertEqual(values.get(key), value, key)
+
     def test_release_manifest(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.assertEqual(manifest["translation_version"], "2.0.1")
+        self.assertEqual(manifest["translation_version"], "2.0.2")
         self.assertEqual(manifest["supported_builds"], ["24159380", "24230788"])
         expected = [
             (
                 "ARK_Italian_Review_24230788_P.pak",
                 "ARK_Italian_Review_P.pak",
-                "88142178794EA50D0AE8670A8D8C4E01686D24044C34B8256F8E637A6D86ED9B",
+                "E32449D5077D73F3D29DB5505C39651F837AC53E0AD96EE20FFD98D2A8C4A0BB",
             ),
             (
                 "zz_ARK_Italian_UI_Review-Windows.pak",

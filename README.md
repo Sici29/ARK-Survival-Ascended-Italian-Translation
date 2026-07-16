@@ -81,11 +81,11 @@ Documenti\ARKItalianTranslation\backups
 - Stringhe approvate editorialmente: **29.485**.
 - Risorse tecniche preservate intenzionalmente: **9.266**.
 - Build verificata più recente: **24230788**.
-- Versione della traduzione: **2.0.1**.
+- Versione della traduzione: **2.0.2**.
 - Revisione: interfaccia, descrizioni, sistemi di gioco, tutorial, note e testi narrativi.
 - Controlli finali: zero errori strutturali, zero avvisi e zero stringhe sospese.
 
-La v2.0.0 ha completato la revisione editoriale manuale riga per riga dell'intero catalogo. La v2.0.1 aggiunge un ulteriore controllo mirato su menu, interfaccia e testi brevi: corregge **66 voci** sfuggite al controllo precedente, comprese `FACE`, `Scalp`, `Brows`, `Foot Size`, `Camera`, `Character`, `Controls`, `Display`, `Password` e vari valori di opzione. Corregge inoltre `Owned` e `DLC PACKS` nei widget del menu DLC che li incorporavano direttamente fuori dal catalogo di localizzazione.
+La v2.0.0 ha completato la revisione editoriale manuale riga per riga dell'intero catalogo. La v2.0.1 ha corretto 66 residui effettivi nei menu e due widget DLC fuori catalogo. La v2.0.2 rifinisce il criterio editoriale con **45 adattamenti contestuali**: conserva gli anglicismi ormai naturali nell'italiano videoludico, come `Camera`, `Password`, `Display`, `Gameplay`, `Multiplayer`, `Online`, `Offline`, `Preset`, `Skin` cosmetica e `Ping`, senza lasciare in inglese i comandi che sembrerebbero una localizzazione incompleta.
 
 ## Aggiornamenti
 
@@ -95,7 +95,7 @@ Se ARK riceve una build non ancora verificata, l'installer non procede silenzios
 
 ## Limiti della copertura
 
-Il dato **38.751 / 38.751** indica la copertura completa del catalogo di localizzazione estratto dalla build verificata. La v2.0.1 include anche un override minimo per i widget DLC che conservavano testi visibili fuori catalogo. Messaggi diagnostici generati dal server o dal motore e contenuti aggiunti da mod restano perimetri distinti: per esempio `Server hitch detected` non è un testo dell'interfaccia localizzabile tramite il catalogo del gioco.
+Il dato **38.751 / 38.751** indica la copertura completa del catalogo di localizzazione estratto dalla build verificata. L'installer include anche un override minimo per i widget DLC che conservavano testi visibili fuori catalogo. Messaggi diagnostici generati dal server o dal motore e contenuti aggiunti da mod restano perimetri distinti: per esempio `Server hitch detected` non è un testo dell'interfaccia localizzabile tramite il catalogo del gioco.
 
 ## Crediti e collegamenti
 
