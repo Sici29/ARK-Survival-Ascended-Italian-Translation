@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import struct
 import unittest
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TRANSLATION = ROOT / "data" / "translation_it.csv"
 MANIFEST = ROOT / "data" / "release_manifest.json"
+ICON_PNG = ROOT / "assets" / "ark-italian-installer-icon.png"
+ICON_ICO = ROOT / "assets" / "ark-italian-installer-icon.ico"
 MOJIBAKE = ("Ã", "Â", "â€™", "â€œ", "â€", "�")
 
 
@@ -85,11 +88,11 @@ class TranslationDataTests(unittest.TestCase):
 
     def test_release_manifest(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.assertEqual(manifest["translation_version"], "2.0.2")
-        self.assertEqual(manifest["supported_builds"], ["24159380", "24230788"])
+        self.assertEqual(manifest["translation_version"], "2.1.0")
+        self.assertEqual(manifest["supported_builds"], ["24159380", "24230788", "24271369"])
         expected = [
             (
-                "ARK_Italian_Review_24230788_P.pak",
+                "ARK_Italian_Review_24271369_P.pak",
                 "ARK_Italian_Review_P.pak",
                 "E32449D5077D73F3D29DB5505C39651F837AC53E0AD96EE20FFD98D2A8C4A0BB",
             ),
@@ -101,12 +104,12 @@ class TranslationDataTests(unittest.TestCase):
             (
                 "zz_ARK_Italian_UI_Review-Windows.ucas",
                 "zz_ARK_Italian_UI_Review-Windows.ucas",
-                "7B38AB7B90FC19F5B4756BB6AF725D1EB11CE76042A0EAD15E99523FDC27FC69",
+                "15DB970623BE830E0769190EBE35979ED554A8148A15619CE7C276D758A0D583",
             ),
             (
                 "zz_ARK_Italian_UI_Review-Windows.utoc",
                 "zz_ARK_Italian_UI_Review-Windows.utoc",
-                "0C5C72C1F2CCF8B063CDB5300142D80A1E31DC8E9F0BA1FC201072F184523913",
+                "FF373FA9AED50E6D5837B980514323761ACA38208AAE4FCAAF0FEE768FDFB795",
             ),
         ]
         actual = [
@@ -115,6 +118,16 @@ class TranslationDataTests(unittest.TestCase):
         ]
         self.assertEqual(actual, expected)
         self.assertTrue(all(re.fullmatch(r"[0-9A-F]{64}", item[2]) for item in actual))
+
+    def test_installer_icon_assets(self) -> None:
+        self.assertTrue(ICON_PNG.is_file())
+        self.assertTrue(ICON_ICO.is_file())
+        self.assertEqual(ICON_PNG.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+        ico = ICON_ICO.read_bytes()
+        self.assertGreater(len(ico), 80_000)
+        reserved, image_type, count = struct.unpack("<HHH", ico[:6])
+        self.assertEqual((reserved, image_type), (0, 1))
+        self.assertGreaterEqual(count, 7)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0 — 18 luglio 2026
+
+- Verificata la nuova build Steam 24271369 direttamente dai contenitori originali del gioco.
+- Confermato che LOCRES inglese, LOCRES italiano e LOCMETA sono byte-identici alla build 24230788: zero chiavi nuove, rimosse o modificate.
+- Estesa la compatibilità dell'installer al nuovo build senza alterare le 38.751 traduzioni già approvate.
+- Rigenerato l'override dei widget DLC sulla nuova base UE5, includendo il GUID FText e gli oggetti di script aggiornati.
+- Aggiunta all'EXE una nuova icona ARK con badge italiano, disponibile nelle risoluzioni Windows da 16 a 256 pixel.
+- Ricostruito e verificato l'installer autonomo in un solo file.
+
 ## 2.0.2 — 16 luglio 2026
 
 - Applicati 45 adattamenti editoriali per evitare italianizzazioni forzate di termini ormai comuni nel gaming italiano.

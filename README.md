@@ -80,12 +80,12 @@ Documenti\ARKItalianTranslation\backups
 - Copertura: **38.751 / 38.751 stringhe**.
 - Stringhe approvate editorialmente: **29.485**.
 - Risorse tecniche preservate intenzionalmente: **9.266**.
-- Build verificata più recente: **24230788**.
-- Versione della traduzione: **2.0.2**.
+- Build verificata più recente: **24271369**.
+- Versione della traduzione: **2.1.0**.
 - Revisione: interfaccia, descrizioni, sistemi di gioco, tutorial, note e testi narrativi.
 - Controlli finali: zero errori strutturali, zero avvisi e zero stringhe sospese.
 
-La v2.0.0 ha completato la revisione editoriale manuale riga per riga dell'intero catalogo. La v2.0.1 ha corretto 66 residui effettivi nei menu e due widget DLC fuori catalogo. La v2.0.2 rifinisce il criterio editoriale con **45 adattamenti contestuali**: conserva gli anglicismi ormai naturali nell'italiano videoludico, come `Camera`, `Password`, `Display`, `Gameplay`, `Multiplayer`, `Online`, `Offline`, `Preset`, `Skin` cosmetica e `Ping`, senza lasciare in inglese i comandi che sembrerebbero una localizzazione incompleta.
+La v2.0.0 ha completato la revisione editoriale manuale riga per riga dell'intero catalogo. La v2.0.1 ha corretto 66 residui effettivi nei menu e due widget DLC fuori catalogo. La v2.0.2 rifinisce il criterio editoriale con **45 adattamenti contestuali**: conserva gli anglicismi ormai naturali nell'italiano videoludico, come `Camera`, `Password`, `Display`, `Gameplay`, `Multiplayer`, `Online`, `Offline`, `Preset`, `Skin` cosmetica e `Ping`, senza lasciare in inglese i comandi che sembrerebbero una localizzazione incompleta. La v2.1.0 verifica il nuovo build Steam **24271369** e introduce l'icona ARK con badge italiano nell'EXE.
 
 ## Aggiornamenti
 
@@ -125,6 +125,7 @@ Il repository contiene soltanto i sorgenti necessari alla manutenzione:
 
 - `data/translation_it.csv`: chiavi e testi italiani completi, senza le frasi inglesi estratte dal gioco;
 - `data/glossary_master.csv`: terminologia vincolante;
+- `assets/`: icona dell'installer con badge italiano;
 - `tools/ark_it_installer.py`: sorgente dell'installer;
 - `tools/build_release.py`: generazione dell'EXE one-file;
 - `tools/export_public_data.py`: esportazione byte-safe del master pubblico;

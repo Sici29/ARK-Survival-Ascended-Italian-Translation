@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+ICON_PATH = ROOT / "assets" / "ark-italian-installer-icon.ico"
 
 
 def sha256_file(path: Path) -> str:
@@ -59,6 +60,8 @@ def main() -> int:
 
     manifest_path = ROOT / "data" / "release_manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+    if not ICON_PATH.is_file():
+        raise FileNotFoundError(f"Icona installer non trovata: {ICON_PATH}")
     payloads = manifest_payloads(manifest)
     supplied = [path.resolve() for path in [*args.payload, *args.pak]]
     if not supplied:
@@ -110,6 +113,8 @@ def main() -> int:
         "--clean",
         "--onefile",
         "--console",
+        "--icon",
+        str(ICON_PATH.resolve()),
         "--name",
         Path(str(manifest["installer_asset"])).stem,
         "--distpath",
