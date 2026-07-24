@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1 — 24 luglio 2026
+
+- Verificata la nuova build Steam 24346205 direttamente dai contenitori originali del gioco.
+- Confermato che LOCRES inglese, LOCRES italiano e LOCMETA sono byte-identici alla build 24271369: zero chiavi nuove, rimosse o modificate.
+- Confermata la copertura completa delle 38.751 stringhe già revisionate.
+- Rilevato un nuovo identificatore interno nel widget `ASAUI_MainMenu_DLC_Selector`.
+- Riestratto il widget originale, riapplicate le quattro sostituzioni italiane e rigenerato il trio IoStore sulla base UE5 corrente.
+- Verificati il nuovo contenitore con `retoc` e il round-trip esatto di entrambi gli UEXP modificati.
+- Ricostruito l'installer autonomo in un solo EXE con rilevamento esplicito della build 24346205.
+
 ## 2.1.0 — 18 luglio 2026
 
 - Verificata la nuova build Steam 24271369 direttamente dai contenitori originali del gioco.

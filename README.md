@@ -80,12 +80,12 @@ Documenti\ARKItalianTranslation\backups
 - Copertura: **38.751 / 38.751 stringhe**.
 - Stringhe approvate editorialmente: **29.485**.
 - Risorse tecniche preservate intenzionalmente: **9.266**.
-- Build verificata più recente: **24271369**.
-- Versione della traduzione: **2.1.0**.
+- Build verificata più recente: **24346205**.
+- Versione della traduzione: **2.1.1**.
 - Revisione: interfaccia, descrizioni, sistemi di gioco, tutorial, note e testi narrativi.
 - Controlli finali: zero errori strutturali, zero avvisi e zero stringhe sospese.
 
-La v2.0.0 ha completato la revisione editoriale manuale riga per riga dell'intero catalogo. La v2.0.1 ha corretto 66 residui effettivi nei menu e due widget DLC fuori catalogo. La v2.0.2 rifinisce il criterio editoriale con **45 adattamenti contestuali**: conserva gli anglicismi ormai naturali nell'italiano videoludico, come `Camera`, `Password`, `Display`, `Gameplay`, `Multiplayer`, `Online`, `Offline`, `Preset`, `Skin` cosmetica e `Ping`, senza lasciare in inglese i comandi che sembrerebbero una localizzazione incompleta. La v2.1.0 verifica il nuovo build Steam **24271369** e introduce l'icona ARK con badge italiano nell'EXE.
+La v2.0.0 ha completato la revisione editoriale manuale riga per riga dell'intero catalogo. La v2.0.1 ha corretto 66 residui effettivi nei menu e due widget DLC fuori catalogo. La v2.0.2 rifinisce il criterio editoriale con **45 adattamenti contestuali**: conserva gli anglicismi ormai naturali nell'italiano videoludico, come `Camera`, `Password`, `Display`, `Gameplay`, `Multiplayer`, `Online`, `Offline`, `Preset`, `Skin` cosmetica e `Ping`, senza lasciare in inglese i comandi che sembrerebbero una localizzazione incompleta. La v2.1.0 introduce l'icona ARK con badge italiano; la v2.1.1 verifica il build Steam **24346205** e rigenera l'override dei menu sulla nuova risorsa UE5.
 
 ## Aggiornamenti
 

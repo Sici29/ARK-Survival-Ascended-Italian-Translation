@@ -88,11 +88,11 @@ class TranslationDataTests(unittest.TestCase):
 
     def test_release_manifest(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.assertEqual(manifest["translation_version"], "2.1.0")
-        self.assertEqual(manifest["supported_builds"], ["24159380", "24230788", "24271369"])
+        self.assertEqual(manifest["translation_version"], "2.1.1")
+        self.assertEqual(manifest["supported_builds"], ["24346205"])
         expected = [
             (
-                "ARK_Italian_Review_24271369_P.pak",
+                "ARK_Italian_Review_24346205_P.pak",
                 "ARK_Italian_Review_P.pak",
                 "E32449D5077D73F3D29DB5505C39651F837AC53E0AD96EE20FFD98D2A8C4A0BB",
             ),
@@ -104,12 +104,12 @@ class TranslationDataTests(unittest.TestCase):
             (
                 "zz_ARK_Italian_UI_Review-Windows.ucas",
                 "zz_ARK_Italian_UI_Review-Windows.ucas",
-                "15DB970623BE830E0769190EBE35979ED554A8148A15619CE7C276D758A0D583",
+                "ACD04D104FEA1C2FBD4FBA2399271A38EAD096FE6D88BDA2F344A2E1BEB7784B",
             ),
             (
                 "zz_ARK_Italian_UI_Review-Windows.utoc",
                 "zz_ARK_Italian_UI_Review-Windows.utoc",
-                "FF373FA9AED50E6D5837B980514323761ACA38208AAE4FCAAF0FEE768FDFB795",
+                "0BE21D246E64DBFB5B1CE38BDC4CA7D886AEFFEB9FE9A8C6C2789FDF0A29C6F9",
             ),
         ]
         actual = [
